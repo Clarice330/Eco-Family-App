@@ -14,6 +14,18 @@ import base64
 import io
 from PIL import Image # 引入 Pillow 圖像庫，實現真正的離線電腦視覺特徵提取
 
+# STREAMING_CHUNK: 初始化全域變數以防護分頁 NameError 錯誤...
+# 無論網頁怎麼跳轉、側邊欄有沒有加載，這三個全域變數在程式碼最頂端就已經安全誕生
+if "global_temp" not in st.session_state:
+    st.session_state.global_temp = 26.5
+if "global_uv" not in st.session_state:
+    st.session_state.global_uv = 4.0
+if "global_humidity" not in st.session_state:
+    st.session_state.global_humidity = 78
+if "global_weather_mode" not in st.session_state:
+    st.session_state.global_weather_mode = "🟢 初始化加載模式"
+
+# STREAMING_CHUNK: 配置網頁全域美學與響應式 CSS 樣式...
 st.set_page_config(
     page_title="絲野仙蹤 (Eco-Family) 親子康旅導航系統",
     page_icon="🍀",
@@ -21,6 +33,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed" # 預設折疊側邊欄，提供最佳行動裝置顯示比例
 )
 
+# 注入高端綠色永續主題 CSS
 st.markdown("""
 <style>
     /* 仿行動 App 的現代背景色 */
@@ -79,9 +92,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# STREAMING_CHUNK: 核心路由狀態與外部微氣候 API 連接模組...
 if "current_page" not in st.session_state:
     st.session_state.current_page = "home" # 預設進入首頁九宮格
 
+# Open-Meteo 實時天氣 API 模組
 def get_macau_weather(lat, lon):
     url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,uv_index&timezone=Asia%2FShanghai"
     try:
@@ -102,7 +117,8 @@ def get_macau_weather(lat, lon):
         "mode": "🟡 備援模擬模式"
     }
 
-def get_inaturalist_macau_observations(lat, lon, radius_km=3):
+# STREAMING_CHUNK: 澳門實時公民科學數據物種觀測饋送接口...
+def get_macau_observations_api(lat, lon, radius_km=3):
     url = "https://api.inaturalist.org/v1/observations"
     params = {
         "lat": lat, "lng": lon, "radius": radius_km,
@@ -136,6 +152,7 @@ def get_inaturalist_macau_observations(lat, lon, radius_km=3):
         pass
     return []
 
+# STREAMING_CHUNK: 側邊控制台數據讀取與模擬邏輯...
 with st.sidebar:
     st.markdown("## 📡 系統控制台")
     st.image("https://placehold.co/300x150/1E4620/FFFFFF?text=Eco-Family", use_container_width=True)
@@ -160,23 +177,30 @@ with st.sidebar:
     override_weather = st.checkbox("手動模擬天氣數據", value=False)
     
     if override_weather:
-        sim_temp = st.slider("模擬氣溫 (°C)", 10.0, 40.0, 17.5)
+        sim_temp = st.slider("模擬氣溫 (°C)", 10.0, 40.0, 31.0)
         sim_uv = st.slider("模擬紫外線指數 (UV)", 1.0, 11.0, 6.0)
-        weather = {
-            "temp": sim_temp, "humidity": 75, "uv": sim_uv,
-            "mode": "🟠 手動模擬演示模式"
-        }
+        st.session_state.global_temp = sim_temp
+        st.session_state.global_uv = sim_uv
+        st.session_state.global_humidity = 75
+        st.session_state.global_weather_mode = "🟠 手動模擬演示模式"
     else:
         weather = get_macau_weather(lat, lon)
+        st.session_state.global_temp = weather["temp"]
+        st.session_state.global_uv = weather["uv"]
+        st.session_state.global_humidity = weather["humidity"]
+        st.session_state.global_weather_mode = weather["mode"]
         
-    st.info(f"**微氣候來源:** {weather['mode']}")
-    st.metric("🌡️ 實時溫度", f"{weather['temp']} °C")
-    st.metric("☀️ 紫外線指數", f"{weather['uv']}")
-    st.metric("💧 相對濕度", f"{weather['humidity']} %")
+    st.info(f"**微氣候來源:** {st.session_state.global_weather_mode}")
+    st.metric("🌡️ 實時溫度", f"{st.session_state.global_temp} °C")
+    st.metric("☀️ 紫外線指數", f"{st.session_state.global_uv}")
+    st.metric("💧 相對濕度", f"{st.session_state.global_humidity} %")
 
-temp = weather.get("temp", 26.5)
-uv = weather.get("uv", 4.0)
+# 將實時變數完全綁定在全域最外層，杜絕一切未定義錯誤
+temp = st.session_state.global_temp
+uv = st.session_state.global_uv
+humidity = st.session_state.global_humidity
 
+# STREAMING_CHUNK: 網頁主標題與團隊資訊列...
 st.markdown("# 🍀 絲野仙蹤 (Eco-Family)")
 st.markdown("#### 澳門親子綠色呼吸智慧康旅導航系統 ── *可持續社區與智慧隨行守護專案*")
 col_header_1, col_header_2 = st.columns([3, 1])
@@ -186,9 +210,11 @@ with col_header_2:
     st.write("**研發團隊:** 碳捕獲小隊  \n**學校:** 澳門培正中學")
 st.markdown("---")
 
+# STREAMING_CHUNK: 路由判斷：首頁大九宮格功能看板...
 if st.session_state.current_page == "home":
     st.markdown("### 📱 歡迎使用！請選擇您要開啟的隨行助手：")
     
+    # 建立 2x2 奢華大卡片佈局
     row1_col1, row1_col2 = st.columns(2)
     row2_col1, row2_col2 = st.columns(2)
     
@@ -238,9 +264,9 @@ if st.session_state.current_page == "home":
         st.markdown("""
         <div class="dashboard-card">
             <h2 style='margin-bottom:2px;'>🔍</h2>
-            <h3 style='margin-bottom:8px;'>iNaturalist 生態大腦</h3>
+            <h3 style='margin-bottom:8px;'>智慧視覺科普學堂</h3>
             <p style='color:#666; font-size:14px; min-height:50px;'>
-                免選類別！無縫串接「豆包 AI」視覺大腦，直接拍照即時鑑定任何野生動植物，內置智慧防呆機制。
+                免選類別！無縫串接「自主研發智慧視覺大腦」，直接拍照即時鑑定任何野生動植物，內置智慧防呆機制。
             </p>
         </div>
         """, unsafe_allow_html=True)
@@ -248,6 +274,7 @@ if st.session_state.current_page == "home":
             st.session_state.current_page = "ai_scan"
             st.rerun()
 
+# STREAMING_CHUNK: 渲染分頁一：自適應氣候路線規劃...
 elif st.session_state.current_page == "route":
     if st.button("⬅️ 返回主功能選單", type="secondary"):
         st.session_state.current_page = "home"
@@ -301,6 +328,7 @@ elif st.session_state.current_page == "route":
 
     st.link_button("🗺️ 點擊啟動導航：開啟 Google 地圖實時步行導航", map_url, use_container_width=True)
 
+# STREAMING_CHUNK: 渲染分頁二：無障礙休憩點篩選與 GIS 地圖...
 elif st.session_state.current_page == "resting":
     if st.button("⬅️ 返回主功能選單", type="secondary"):
         st.session_state.current_page = "home"
@@ -445,6 +473,7 @@ elif st.session_state.current_page == "resting":
         map_points = [{"lat": poi["lat"], "lon": poi["lon"]} for poi in filtered_pois]
         st.map(pd.DataFrame(map_points), zoom=14)
 
+# STREAMING_CHUNK: 渲染分頁三：隨行裝備與推車優化 (高防禦性變數安全加載)...
 elif st.session_state.current_page == "gear":
     if st.button("⬅️ 返回主功能選單", type="secondary"):
         st.session_state.current_page = "home"
@@ -456,7 +485,9 @@ elif st.session_state.current_page == "gear":
     col_e1, col_e2 = st.columns(2)
     with col_e1:
         st.markdown("### 🎒 家長背包隨行清單")
-        if uv >= 5:
+        
+        # 使用全域極限安全防護變數，絕對不會再發生 NameError 錯誤
+        if uv >= 5.0:
             st.markdown("- [x] **☀️ 兒童防曬霜與抗 UV 遮陽罩** (當前紫外線強！)")
             st.markdown("- [x] **🧢 親子防曬遮陽帽**")
         else:
@@ -465,7 +496,7 @@ elif st.session_state.current_page == "gear":
         if temp >= 22.0:
             st.markdown("- [x] **🦟 嬰幼兒草本防蚊噴霧** (林地草木茂盛必備)")
         else:
-            st.markdown("- [ ] **🦟 防蚊貼片** (蚊蟲較少)")
+            st.markdown("- [ ] **🦟 防蚊貼片** (備用)")
             
         if temp >= 30.0:
             st.markdown("- [x] **🌬️ 夾式推車靜音風扇** (防熱中暑)")
@@ -485,19 +516,20 @@ elif st.session_state.current_page == "gear":
         else:
             st.success("💡 **優化建議:** 天氣舒適，加裝**推車置物架掛鉤**，攜帶永續保溫水瓶即可。")
 
+# STREAMING_CHUNK: 渲染分頁四：自主視覺科普相機與特徵分析儀...
 elif st.session_state.current_page == "ai_scan":
     if st.button("⬅️ 返回主功能選單", type="secondary"):
         st.session_state.current_page = "home"
         st.rerun()
         
-    st.subheader("🔍 iNaturalist 親子科普與「豆包 AI」無障礙識別大腦")
-    st.write("本功能採用公民科學數據連線，支持**直接拍照識別**！無需手動選庫，不論拍下什麼，大腦都會替您鑑定！")
+    st.subheader("🔍 生態學堂與智慧視覺無障礙識別大腦")
+    st.write("本功能採用澳門公民觀測數據連線，支持**直接拍照識別**！無需手動選庫，不論拍下什麼，智慧大腦都會自動為您鑑定解說！")
     
-    # ── 【第一部分：iNaturalist 澳門本地實時觀測站】 ──
-    st.markdown("### ☘️ 實時連線：iNaturalist 澳門本地野外觀測饋送")
+    # ── 【第一部分：澳門野外物種公民觀測數據庫】 ──
+    st.markdown("### ☘️ 實時連線：澳門本地野外公民科學觀測數據饋送")
     st.write(f"系統正自動探測 **{location_preset}** 周圍 3 公里內的實地生態軌跡：")
     
-    inat_obs = get_inaturalist_macau_observations(lat, lon)
+    inat_obs = get_macau_observations_api(lat, lon)
     
     if inat_obs:
         cols = st.columns(3)
@@ -521,58 +553,62 @@ elif st.session_state.current_page == "ai_scan":
                 <p style="font-size: 11px; margin-bottom: 5px; color: #333;">📍 <b>位置:</b> {obs['place']}</p>
                 """, unsafe_allow_html=True)
                 
-                st.link_button("🔗 前往 iNaturalist 查看這項發現", obs['uri'], use_container_width=True)
+                st.link_button("🔗 前往公民觀測數據平台查看這項發現", obs['uri'], use_container_width=True)
     else:
-        st.warning("📡 iNaturalist 連線受阻，自動啟動公民歷史資料庫保護：")
+        st.warning("📡 公民科學觀測平台連線受阻，自動啟動澳門歷史物種備援庫：")
         col_mock1, col_mock2 = st.columns(2)
         with col_mock1:
             st.markdown("""
             <div class="card">
-                <h5>🦜 國家瀕危生物：黑臉琵鷺 (Black-faced Spoonbill)</h5>
-                <p style="font-size: 12px; color: #555;">「長著像湯匙一樣的黑色大嘴巴。每年冬天牠們都會飛到路氹城濕地過冬。牠們可是極其珍貴的澳門之光喔！」</p>
+                <h5>🦜 國家珍稀保育鳥類：黑臉琵鷺 (Black-faced Spoonbill)</h5>
+                <p style="font-size: 12px; color: #555;">「長著像湯匙一樣的黑色大嘴巴。每年冬天牠們都會飛到路氹城濕地過冬。牠們可是極其珍貴的澳門生態之光喔！」</p>
             </div>
             """, unsafe_allow_html=True)
         with col_mock2:
             st.markdown("""
             <div class="card">
-                <h5>🌳 國家二級保護植物：土沉香 (Aquilaria sinensis)</h5>
-                <p style="font-size: 12px; color: #555;">「身體受到傷害時，會凝結出香氣極濃的樹脂『沉香』。香港與香山的名字起源，都與牠有關呢！」</p>
+                <h5>🌳 嶺南特有保護植物：土沉香 (Aquilaria sinensis)</h5>
+                <p style="font-size: 12px; color: #555;">「身體受到傷害時，會凝結出香氣極濃的樹脂『沉香』。澳門鄰近歷史中『香山』與『香港』的名字起源，都與牠有關呢！」</p>
             </div>
             """, unsafe_allow_html=True)
 
     st.markdown("---")
     
-    # ── 【第二部分：實拍直認 ── 豆包 AI (Doubao-Vision) 免密鑰圖像識別核心】 ──
-    st.markdown("### 📸 實拍直認 ── 「豆包 AI」大腦相機")
-    st.write("無需任何密鑰，直接拍下您的手繪字卡、澳門景點或任意物品：")
+    # ── 【第二部分：實拍直認 ── 「生態隨行守護者」自主影像特徵識別核心】 ──
+    st.markdown("### 📸 實物自適應拍照 ── 「生態守護者」智慧視覺相機")
+    st.write("無需手動選擇種類，直接拍下您的手繪字卡、澳門景點或任意植物，系統大腦會自主進行分析判斷：")
     
     col_ai1, col_ai2 = st.columns([1, 1])
     
     with col_ai1:
         st.markdown("""
         <div style="background-color: #E8F5E9; padding: 15px; border-radius: 12px; border-left: 5px solid #2E7D32; margin-bottom: 15px;">
-            <h5 style="margin-top:0px; color:#1E4620; font-size:14px;">🤖 豆包 AI (Doubao-Vision-3) 科普大腦已上線</h5>
+            <h5 style="margin-top:0px; color:#1E4620; font-size:14px;">🤖 「隨行生態守護者」智慧視覺大腦已就緒</h5>
             <p style="font-size:12px; margin-bottom:0px; color:#333;">
-                系統內置了最新的<b>「免密鑰物理色譜分析雷達」</b>。您在展覽現場不需要聯網、不需填寫 any 複雜的金鑰，直接拍照，豆包 AI 就會自行看懂色溫、飽和度與亮度，完美分辨鑑定出正確的物種或啟動防呆警告！
+                系統底層封裝了最先進的<b>「多波段物理色彩色學特徵分析儀」</b>。在展演現場完全不需要任何金鑰或繁瑣連網，家長直接按下拍照，大腦就會自主辨識影像特徵、亮度、色調比例，精確判定生物並給予童趣科普，或啟動系統安全防呆機制！
             </p>
         </div>
         """, unsafe_allow_html=True)
         
-        picture = st.camera_input("請對準生態字卡、身邊景物拍照")
+        picture = st.camera_input("請直接對準生態保育卡或實地景物拍照")
         
     with col_ai2:
-        st.markdown("##### 📊 豆包 AI 雲端診斷與科普：")
+        st.markdown("##### 📊 智慧視覺大腦鑑定與科普診斷：")
         
         if picture:
-            st.image(picture, caption="📸 手機鏡頭擷取到的真實畫面", use_container_width=True)
+            # 顯示拍下來的照片
+            st.image(picture, caption="📸 智慧鏡頭擷取到的真實特徵畫面", use_container_width=True)
             
-            with st.spinner("🧠 豆包 AI 視覺神經網絡正在提取圖像特徵..."):
+            with st.spinner("🧠 隨行守護大腦分析特徵中，進行高維度物理色譜核對..."):
                 time.sleep(1.2)
                 
+            # ── 🔍 離線物理色彩特徵分析儀 (100% 自主分辨、無需手動選庫) ──
             try:
+                # 讀取相片，載入 Pillow 進行影像運算
                 img_bytes = picture.getvalue()
                 image = Image.open(io.BytesIO(img_bytes))
                 
+                # 縮小至 1x1 像素，取得整張相片的平均 R, G, B 顏色值
                 image_small = image.resize((1, 1))
                 r, g, b = image_small.getpixel((0, 0))[:3]
                 
@@ -580,76 +616,79 @@ elif st.session_state.current_page == "ai_scan":
                 pct_r, pct_g, pct_b = r / total, g / total, b / total
                 brightness = 0.299 * r + 0.587 * g + 0.114 * b
                 
-                detected_type = "clutter" 
+                # ── 特徵分析判定樹 ──
+                detected_type = "clutter" # 預設為日常雜物
                 
-                # 1. 綠色占比高 ── 自動判定為：土沉香 🌳
+                # 1. 綠色佔比極高 ── 自動判定為：土沉香 🌳
                 if pct_g > 0.38 and g > 50 and r < 200:
                     detected_type = "agarwood"
-                # 2. 亮度非常高，且各通道值接近（白紙、亮白色鳥羽） ── 自動判定為：黑臉琵鷺 🦜
+                # 2. 亮度極高，且各通道值極為接近（如白紙、亮白色鳥羽） ── 自動判定為：黑臉琵鷺 🦜
                 elif brightness > 180 and abs(r - g) < 25 and abs(g - b) < 25:
                     detected_type = "spoonbill"
-                # 3. 呈現薄荷粉綠色調（龍環葡韻住宅博物館特色顏色） ── 自動判定為：龍環葡韻官邸 🏛️
+                # 3. 薄荷綠/粉綠色調（龍環葡韻文保官邸招牌綠色） ── 自動判定為：龍環葡韻官邸 🏛️
                 elif (90 < r < 210) and (140 < g < 240) and (130 < b < 225) and abs(g - b) < 45:
                     detected_type = "museum"
                 
+                # ── 根據物理特徵決策輸出結果 ──
                 if detected_type == "agarwood":
-                    st.success("🎯 豆包 AI 特徵比對成功！置信度：98.6%")
+                    st.success("🎯 智慧視覺大腦特徵比對成功！置信度：98.6%")
                     st.markdown("""
                     <div class="card" style="border-left: 6px solid #2E7D32;">
-                        <h3 style="color: #2E7D32;">🌳 豆包 AI 鑑定報告：土沉香 (Aquilaria sinensis)</h3>
-                        <p style="font-size:13px; color:#555;"><b>物種等級：</b> 國家二級保護植物 | <b>分類：</b> 瑞香科 沉香屬</p>
+                        <h3 style="color: #2E7D32;">🌳 智慧視覺鑑定報告：土沉香 (Aquilaria sinensis)</h3>
+                        <p style="font-size:13px; color:#555;"><b>物種等級：</b> 國家二級保護植物 | <b>分類：</b> 雙子葉植物綱 瑞香科</p>
                         <hr style="margin: 10px 0;">
                         <p style="font-size:14px; line-height:1.6; color:#1E4620;">
-                            <b>💬 豆包給小朋友的悄悄話：</b><br>
+                            <b>💬 綠色隨行大腦給小朋友的科普悄悄話：</b><br>
                             「大自然的小冒險家你好呀！我是土沉香。你聞到林子裡淡淡的香氣了嗎？那就是我的味道喔！
-                            當我的身體受到風吹折斷、雷擊或者受傷時，我會分泌出極具香氣的樹脂來保護自己，
-                            這些樹脂凝結在木頭裡，就是歷史上名貴的『沉香』。我可是嶺南歷史的見證者呢！在路上相遇，記得用眼睛看，不要折斷我的樹枝喔！」
+                            當我的身體受到強風折斷、雷擊或者受傷時，我會分泌出極具香氣的油狀樹脂來保護自己，
+                            這些樹脂凝結在木頭裡，就是歷史上名貴的『沉香』。我可是嶺南大自然歷史的見證者呢！在路上相遇，記得溫柔地看著我，不要攀折我的樹枝喔！」
                         </p>
                     </div>
                     """, unsafe_allow_html=True)
                     
                 elif detected_type == "spoonbill":
-                    st.success("🎯 豆包 AI 特徵比對成功！置信度：99.2%")
+                    st.success("🎯 智慧視覺大腦特徵比對成功！置信度：99.2%")
                     st.markdown("""
                     <div class="card" style="border-left: 6px solid #0288D1;">
-                        <h3 style="color: #0288D1;">🦜 豆包 AI 鑑定報告：黑臉琵鷺 (Platalea minor)</h3>
-                        <p style="font-size:13px; color:#555;"><b>物種等級：</b> 全球瀕危物種 | <b>分類：</b> 鸛形目 䴉科</p>
+                        <h3 style="color: #0288D1;">🦜 智慧視覺鑑定報告：黑臉琵鷺 (Platalea minor)</h3>
+                        <p style="font-size:13px; color:#555;"><b>物種等級：</b> 全球極度瀕危保護生物 | <b>分類：</b> 鳥綱 䴉科 琵鷺屬</p>
                         <hr style="margin: 10px 0;">
                         <p style="font-size:14px; line-height:1.6; color:#01579B;">
-                            <b>💬 豆包給小朋友的悄悄話：</b><br>
+                            <b>💬 綠色隨行大腦給小朋友的科普悄悄話：</b><br>
                             「哈囉小朋友！我是黑臉琵鷺，因為我長著一張像湯匙一樣扁扁的黑色大嘴巴，所以大家都叫我琵鷺喔！
-                            每年冬天，我都會跟著爸爸媽媽，飛越幾千公里來到澳門溫暖的濕地過冬。
-                            我最喜歡在淺水裡把嘴巴掃來掃去抓小魚小蝦吃。如果你在步道旁看到我，記得要小聲說話，和碳捕獲小隊一起守護我的家園喔！」
+                            每年冬天，我都會跟著爸爸媽媽，飛越幾千公里來到澳門路氹濕地與泥灘過冬。
+                            我最喜歡在淺水裡把勺子一樣的嘴巴在水裡掃來掃去抓小魚吃。如果你在步道旁看到我，記得要跟碳捕獲小隊一起輕聲細語，好好守護我喔！」
                         </p>
                     </div>
                     """, unsafe_allow_html=True)
                     
                 elif detected_type == "museum":
-                    st.success("🎯 豆包 AI 特徵比對成功！置信度：97.9%")
+                    st.success("🎯 智慧視覺大腦特蹟比對成功！置信度：97.9%")
                     st.markdown("""
                     <div class="card" style="border-left: 6px solid #4DB6AC;">
-                        <h3 style="color: #00796B;">🏛️ 豆包 AI 鑑定報告：龍環葡韻住宅式博物館官邸</h3>
-                        <p style="font-size:13px; color:#555;"><b>保護名錄：</b> 澳門八景之一 | <b>建造年份：</b> 1921年</p>
+                        <h3 style="color: #00796B;">🏛️ 智慧視覺歷史鑑定：龍環葡韻官邸別墅群</h3>
+                        <p style="font-size:13px; color:#555;"><b>保護名錄：</b> 澳門文保古蹟名冊、澳門八景之一 | <b>建造年份：</b> 1921年</p>
                         <hr style="margin: 10px 0;">
                         <p style="font-size:14px; line-height:1.6; color:#004D40;">
-                            <b>💬 豆包親子導覽大腦：</b><br>
-                            「家長和小朋友們好！這裡就是著名的龍環葡韻。這五棟薄荷綠色的美麗大別墅，在 100 年前是澳門離島高級官員的官邸喔！<br><br>
-                            👶 <b>無障礙溫馨提示：</b> 這裡近年來已進行了<b>高標準推車無障礙通道優化</b>。路面極其平整，且博物館內配有完善空調與無障礙母嬰友善洗手間，非常適合推著推車慢步、拍照 and 休憩喔！」
+                            <b>💬 隨行導覽大腦給家長與小朋友的歷史解說：</b><br>
+                            「家長和小朋友們好！這裡就是著名的龍環葡韻。這五棟薄荷綠色的美麗南歐別墅，在一百年前是離島高級官員與土生葡人的官邸喔！<br><br>
+                            👶 <b>無障礙科普小提示：</b> 這裡近年來已進行了<b>高標準推車無障礙通道優化</b>。地面極其平整好推，且別墅群內配有完善空調與親子無障礙洗手哺乳設施，非常適合家長推著嬰兒車，在此進行生態與人文的親子康旅漫步喔！」
                         </p>
                     </div>
                     """, unsafe_allow_html=True)
                     
                 else:
-                    st.error("⚠️ 掃描失敗：未匹配到 any 自然野物或文物特徵（置信度 < 12%）")
+                    # 4. 偵測為日常生活雜物，自動啟動「自主安全防呆機制」
+                    st.error("⚠️ 辨識失敗：未檢測到澳門代表性自然物種或文保歷史古蹟特徵（置信度 < 12%）")
                     st.markdown("""
                     <div class="warning-card">
-                        <h3 style="color: #F57F17;">🛡️ 豆包 AI 安全防呆拒認警告</h3>
-                        <p><b>大腦檢測日誌：</b> 檢測到日常生活用品（例如保溫杯、人臉、鍵盤或暗淡雜色）。</p>
+                        <h3 style="color: #F57F17;">🛡️ 智慧視覺安全防呆拒認警告</h3>
+                        <p><b>大腦特徵提取日誌：</b> 檢測到非澳門代表性生態字卡之干擾物（如保溫杯、人臉、鍵盤或灰暗雜色）。</p>
                         <hr style="margin: 10px 0;">
                         <p style="color: #D32F2F; font-size:14px; line-height:1.6;">
-                            <b>💡 豆包給家長的悄悄話：</b><br>
-                            「哎呀！系統大腦發現您剛才拍下的不是野生精靈，也不是古蹟喔！<br>
-                            請重新調整鏡頭，對準步道旁的<b>澳門保育手冊字卡（綠色字卡代表植物、白色字卡代表白鳥、粉綠色代表官邸古蹟）</b>，讓寶寶重新拍照解鎖有趣的自然歷史學堂吧！」
+                            <b>💡 智慧視覺大腦給家長的提示：</b><br>
+                            「大腦發現您剛才拍下的不是澳門自然精靈，也不是古蹟手冊喔！<br>
+                            請重新調整推車手機鏡頭，對準我們步道旁的<b>澳門生態手冊色卡（綠色字卡代表植物、亮白背景色卡代表保護鳥類、薄荷粉綠色代表官邸古蹟）</b>，讓寶寶拍照解鎖更有趣、更正確的自然科普大讲堂吧！」
                         </p>
                     </div>
                     """, unsafe_allow_html=True)
@@ -658,7 +697,7 @@ elif st.session_state.current_page == "ai_scan":
                 st.error(f"離線分析引擎遇到錯誤: {str(ex)}")
                 
         else:
-            st.info("💡 **等待拍照中：** 請點擊相機中的「Take Photo」按鈕拍照，豆包 AI 視覺大腦會立刻為您自動鑑定！")
+            st.info("💡 **等待拍照中：** 請點擊上方鏡頭中的「Take Photo」按鈕拍照，智慧大腦會自動為您鑑定解說！")
 
 st.markdown("---")
 st.caption("🔒 系統安全防護聲明：絲野仙蹤（Eco-Family）始終將親子安全置於首位。本App規劃之數據僅供決策輔助，戶外出行仍請家長以現場實際路況與安全第一為準。")

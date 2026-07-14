@@ -646,4 +646,4 @@ elif st.session_state.current_page == "gear":
         st.success("💡 **配件最優調整：** \n微氣候十分宜人！安裝常用的 **推車防滑掛鉤** 與多功能水杯架，即可愉快出發囉！")
 
 st.markdown("<br><hr style='margin: 10px 0; border: none; border-top: 1px solid #E0E0E0;'>", unsafe_allow_html=True)
-st.caption("🔒 系統安全防護聲明：絲野仙蹤（Eco-Family）始終將親子安全置於首位。本App規劃之數據僅供決策輔助，戶外出行仍請家長以現場實際路況與安全第一為準。")a
+st.caption("🔒 系統安全防護聲明：絲野仙蹤（Eco-Family）始終將親子安全置於首位。本App規劃之數據僅供決策輔助，戶外出行仍請家長以現場實際路況與安全第一為準。")

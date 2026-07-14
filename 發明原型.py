@@ -775,4 +775,4 @@ elif st.session_state.current_page == "ai_scan":
             st.info("💡 **等待拍照中：** 請點擊相機中的「Take Photo」按鈕拍照，分析儀會立刻為您自動鑑定！")
 
 st.markdown("---")
-st.caption("🔒 系統安全防護聲明：絲野仙蹤（Eco-Family）始終將親子安全置於首位。本App規劃之數據僅供決策輔助，戶外出行仍請家長以現場實際路況與安全第一為準。")
+st.caption("🔒 系統安全防護聲明：絲野仙蹤（Eco-Family）始終將親子安全置於首位。本App規劃之數據僅供決策輔助，戶外出行仍請家長以現場實際路況與安全第一為準。")z

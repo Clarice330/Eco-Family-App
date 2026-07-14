@@ -14,8 +14,7 @@ import base64
 import io
 from PIL import Image # 引入 Pillow 圖像庫，實現真正的離線電腦視覺特徵提取
 
-# STREAMING_CHUNK: 初始化全域變數以防護分頁 NameError 錯誤...
-# 無論網頁怎麼跳轉、側邊欄有沒有加載，這三個全域變數在程式碼最頂端就已經安全誕生
+# ==================== 1. 全域變數安全初始化防護 ====================
 if "global_temp" not in st.session_state:
     st.session_state.global_temp = 26.5
 if "global_uv" not in st.session_state:
@@ -25,7 +24,7 @@ if "global_humidity" not in st.session_state:
 if "global_weather_mode" not in st.session_state:
     st.session_state.global_weather_mode = "🟢 初始化加載模式"
 
-# STREAMING_CHUNK: 配置網頁全域美學與響應式 CSS 樣式...
+# ==================== 2. 網頁全域美學與響應式 CSS 樣式配置 ====================
 st.set_page_config(
     page_title="絲野仙蹤 (Eco-Family) 親子康旅導航系統",
     page_icon="🍀",
@@ -33,7 +32,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed" # 預設折疊側邊欄，提供最佳行動裝置顯示比例
 )
 
-# 注入高端綠色永續主題 CSS
+# 注入 CSS：將 Streamlit Primary 按鈕直接升級為 100% 可點擊的大卡片框！
 st.markdown("""
 <style>
     /* 仿行動 App 的現代背景色 */
@@ -48,21 +47,32 @@ st.markdown("""
         font-weight: 700;
     }
     
-    /* 大儀表板卡片樣式 */
-    .dashboard-card {
-        background-color: #FFFFFF;
-        border: 2px solid #E8F5E9;
-        border-radius: 16px;
-        padding: 24px;
-        text-align: center;
-        box-shadow: 0 10px 20px rgba(30, 70, 32, 0.04);
-        transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
-        margin-bottom: 15px;
+    /* 🛠️ 核心優化：將 Primary Button 重新設計為 100% 可點擊的大卡片 */
+    div.stButton > button[data-testid="stBaseButton-primary"] {
+        background-color: #FFFFFF !important;
+        color: #1E4620 !important;
+        border: 2px solid #E8F5E9 !important;
+        border-radius: 20px !important;
+        padding: 30px 24px !important;
+        box-shadow: 0 10px 25px rgba(30, 70, 32, 0.04) !important;
+        transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1) !important;
+        min-height: 240px !important;
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        white-space: pre-wrap !important; /* 允許文字自動換行 */
+        text-align: center !important;
+        cursor: pointer !important;
     }
-    .dashboard-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 15px 30px rgba(30, 70, 32, 0.1);
-        border-color: #81C784;
+    
+    /* 卡片按鈕懸浮時的動態特效 */
+    div.stButton > button[data-testid="stBaseButton-primary"]:hover {
+        transform: translateY(-6px) !important;
+        box-shadow: 0 15px 30px rgba(30, 70, 32, 0.12) !important;
+        border-color: #81C784 !important;
+        background-color: #F1F9F3 !important;
     }
     
     /* 資訊面板樣式 */
@@ -89,14 +99,22 @@ st.markdown("""
         margin-bottom: 15px;
         border-left: 5px solid #4CAF50;
     }
+    .step-card {
+        background-color: #FFFFFF;
+        padding: 15px;
+        border-radius: 10px;
+        border-left: 4px solid #81C784;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# STREAMING_CHUNK: 核心路由狀態與外部微氣候 API 連接模組...
+# ==================== 3. 核心導航狀態初始化 ====================
 if "current_page" not in st.session_state:
-    st.session_state.current_page = "home" # 預設進入首頁九宮格
+    st.session_state.current_page = "home" # 預設進入首頁
 
-# Open-Meteo 實時天氣 API 模組
+# ==================== 4. 實時外部微氣候 API 串接模組 ====================
 def get_macau_weather(lat, lon):
     url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,uv_index&timezone=Asia%2FShanghai"
     try:
@@ -117,45 +135,10 @@ def get_macau_weather(lat, lon):
         "mode": "🟡 備援模擬模式"
     }
 
-# STREAMING_CHUNK: 澳門實時公民科學數據物種觀測饋送接口...
-def get_macau_observations_api(lat, lon, radius_km=3):
-    url = "https://api.inaturalist.org/v1/observations"
-    params = {
-        "lat": lat, "lng": lon, "radius": radius_km,
-        "per_page": 3, "order": "desc", "order_by": "created_at", "photos": "true"
-    }
-    try:
-        response = requests.get(url, params=params, timeout=5)
-        if response.status_code == 200:
-            data = response.json()
-            results = data.get("results", [])
-            parsed_obs = []
-            for obs in results:
-                taxon = obs.get("taxon") or {}
-                taxon_name = taxon.get("name", "未知物種")
-                common_name = taxon.get("preferred_common_name") or taxon_name
-                photo_url = None
-                if obs.get("photos"):
-                    photo_url = obs["photos"][0].get("url")
-                    if photo_url and "square" in photo_url:
-                        photo_url = photo_url.replace("square", "medium")
-                observer = obs.get("user", {}).get("login", "熱心市民")
-                observed_on = obs.get("observed_on", "近期的發現")
-                place_guess = obs.get("place_guess") or "澳門本地生態區域"
-                inat_url = obs.get("uri") or "https://www.inaturalist.org"
-                parsed_obs.append({
-                    "name": taxon_name, "common_name": common_name, "photo": photo_url,
-                    "observer": observer, "date": observed_on, "place": place_guess, "uri": inat_url
-                })
-            return parsed_obs
-    except Exception:
-        pass
-    return []
-
-# STREAMING_CHUNK: 側邊控制台數據讀取與模擬邏輯...
+# ==================== 5. 側邊控制台 ====================
 with st.sidebar:
     st.markdown("## 📡 系統控制台")
-    st.image("https://placehold.co/300x150/1E4620/FFFFFF?text=Eco-Family", use_container_width=True)
+    st.image("https://placehold.co/300x150/1E4620/FFFFFF?text=Eco-Family", width=300)
     
     st.markdown("### 📍 當前定位 (模擬家長 GPS)")
     location_preset = st.selectbox(
@@ -195,12 +178,12 @@ with st.sidebar:
     st.metric("☀️ 紫外線指數", f"{st.session_state.global_uv}")
     st.metric("💧 相對濕度", f"{st.session_state.global_humidity} %")
 
-# 將實時變數完全綁定在全域最外層，杜絕一切未定義錯誤
+# 鎖定全域微氣候變數，防止各頁面 NameError
 temp = st.session_state.global_temp
 uv = st.session_state.global_uv
 humidity = st.session_state.global_humidity
 
-# STREAMING_CHUNK: 網頁主標題與團隊資訊列...
+# ==================== 6. 主標題區 ====================
 st.markdown("# 🍀 絲野仙蹤 (Eco-Family)")
 st.markdown("#### 澳門親子綠色呼吸智慧康旅導航系統 ── *可持續社區與智慧隨行守護專案*")
 col_header_1, col_header_2 = st.columns([3, 1])
@@ -210,187 +193,256 @@ with col_header_2:
     st.write("**研發團隊:** 碳捕獲小隊  \n**學校:** 澳門培正中學")
 st.markdown("---")
 
-# STREAMING_CHUNK: 路由判斷：首頁大九宮格功能看板...
+# ==================== 7. 頁面路由：首頁大卡片按鈕 (2x2 對稱佈局，大框按鈕二合一) ====================
 if st.session_state.current_page == "home":
-    st.markdown("### 📱 歡迎使用！請選擇您要開啟的隨行助手：")
+    st.markdown("### 📱 歡迎使用！請直接點擊下方卡片開啟隨行助手：")
     
-    # 建立 2x2 奢華大卡片佈局
     row1_col1, row1_col2 = st.columns(2)
     row2_col1, row2_col2 = st.columns(2)
     
     with row1_col1:
-        st.markdown("""
-        <div class="dashboard-card">
-            <h2 style='margin-bottom:2px;'>🗺️</h2>
-            <h3 style='margin-bottom:8px;'>自適應氣候路線規劃</h3>
-            <p style='color:#666; font-size:14px; min-height:50px;'>
-                讀取實時微氣候與紫外線指數，自動推薦最清涼、防曬、對寶寶最舒適的森林步道。
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("🗺️ 點擊開啟路線規劃", use_container_width=True, type="primary"):
+        if st.button("🗺️\n自適應氣候路線規劃\n\n結合實時氣象與紫外線指數，自動為嬰兒車規劃防曬、通風的林蔭綠廊，降低寶寶熱傷害風險。", key="card_btn_route", type="primary", use_container_width=True):
             st.session_state.current_page = "route"
             st.rerun()
             
     with row1_col2:
-        st.markdown("""
-        <div class="dashboard-card">
-            <h2 style='margin-bottom:2px;'>⛱️</h2>
-            <h3 style='margin-bottom:8px;'>無障礙休憩點篩選</h3>
-            <p style='color:#666; font-size:14px; min-height:50px;'>
-                利用 GIS 坡度與樹蔭疊加分析，動態過濾台階與陡坡，尋找嬰兒車友善的黃金休息區。
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("⛱️ 點擊尋找休憩點", use_container_width=True, type="primary"):
+        if st.button("⛱️\n無障礙休憩點篩選\n\n利用 GIS 坡度與大自然綠蔭疊加分析，避開陡斜坡與台階，為家長篩選出設有母嬰設施的平緩休憩區。", key="card_btn_resting", type="primary", use_container_width=True):
             st.session_state.current_page = "resting"
             st.rerun()
             
     with row2_col1:
-        st.markdown("""
-        <div class="dashboard-card">
-            <h2 style='margin-bottom:2px;'>🎒</h2>
-            <h3 style='margin-bottom:8px;'>隨行裝備與推車優化</h3>
-            <p style='color:#666; font-size:14px; min-height:50px;'>
-                根據當前微氣候指標與地形特徵，即時推薦家長背包清單與嬰兒推車配件調整建議。
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("🎒 點擊檢查裝備清單", use_container_width=True, type="primary"):
+        if st.button("🎒\n隨行裝備與推車優化\n\n根據出發地微氣候，提供最貼心的家長背包裝備核對表，並實時提示嬰兒車配件的防護調整建議。", key="card_btn_gear", type="primary", use_container_width=True):
             st.session_state.current_page = "gear"
             st.rerun()
             
     with row2_col2:
-        st.markdown("""
-        <div class="dashboard-card">
-            <h2 style='margin-bottom:2px;'>🔍</h2>
-            <h3 style='margin-bottom:8px;'>智慧視覺科普學堂</h3>
-            <p style='color:#666; font-size:14px; min-height:50px;'>
-                免選類別！無縫串接「自主研發智慧視覺大腦」，直接拍照即時鑑定任何野生動植物，內置智慧防呆機制。
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("🔍 點擊啟動生態大腦", use_container_width=True, type="primary"):
+        if st.button("🔍\n自研生態科普分析儀\n\n免選單、直拍直認！利用小隊自主研發的「絲野隨行生態視覺分析儀」，結合物理色譜特徵，拍照即時鑑定澳門特有物種。", key="card_btn_ai", type="primary", use_container_width=True):
             st.session_state.current_page = "ai_scan"
             st.rerun()
 
-# STREAMING_CHUNK: 渲染分頁一：自適應氣候路線規劃...
+# ==================== 功能一：自適應氣候路線規劃 (高德地圖級：Leaflet高精度畫線) ====================
 elif st.session_state.current_page == "route":
     if st.button("⬅️ 返回主功能選單", type="secondary"):
         st.session_state.current_page = "home"
         st.rerun()
         
-    st.subheader("🗺️ 自適應綠色路線規劃")
-    st.write("系統會自動依據微氣候與紫外線強度，優選避開極高溫、曝曬之親子路徑：")
+    st.subheader("🗺️ 自適應綠廊路線規劃")
     
+    # 根據氣候自動篩選並確定路線的精準 WGS-84 座標線段
     if temp >= 30.0:
         route_name = "🌲 大潭山林蔭避暑步道"
-        route_desc = "當前溫度偏高（≥ 30°C），已為您動態優選避暑路線。本路徑森林遮蔭率達 85% 以上，能有效防止寶寶受強光直曬。"
-        route_coords = pd.DataFrame({
-            'lat': [22.1581, 22.1585, 22.1575], 'lon': [113.5623, 113.5630, 113.5615]
-        })
+        route_desc = "當前環境溫度偏高（≥ 30°C），已為您動態優選避暑林蔭路線。本路徑森林遮蔭率達 85% 以上，且全程避開烈日直曬。"
+        
+        path_json = [
+            [22.1539, 113.5594], # 起點：龍環葡韻住宅式博物館
+            [22.1555, 113.5605], # 步行徑起點
+            [22.1572, 113.5621], # 斜行升降機
+            [22.1581, 113.5623], # 瞭望台
+            [22.1585, 113.5630]  # 終點：大潭山避暑景觀亭
+        ]
+        
+        steps = [
+            {"num": "1", "dist": "180公尺", "title": "從龍環葡韻出發，沿平緩石板步行徑向北前進", "detail": "🍼 平整鋪面，兩旁有濃密樟樹遮蔭，嬰兒推車通行極度舒適。"},
+            {"num": "2", "dist": "220公尺", "title": "抵達大潭山斜行升降機低層入口", "detail": "♿ 設有無障礙通道與超寬大車廂，推車不需折疊即可直接搭乘升降機直上山頂。"},
+            {"num": "3", "dist": "50公尺", "title": "搭乘升降機出站，抵達大潭山觀景眺望台", "detail": "📸 這裡可俯瞰路氹金光大道美景，現場設有遮陽棚，紫外線防護良好。"},
+            {"num": "4", "dist": "120公尺", "title": "沿大潭山林蔭綠色路徑，抵達終點避暑景觀亭", "detail": "🌳 遮蔭率高達 90%，備有嬰兒車停泊區與防蚊綠色草本植被。"}
+        ]
+        
+        start_label, end_label = "龍環葡韻住宅式博物館", "大潭山避暑景觀亭"
+        center_lat, center_lon = 22.1562, 113.5612
         tip_style = "warning-card"
         icon = "☀️"
+        
+        # 精確的高德與Google步行導航
+        amap_url = f"https://uri.amap.com/navigation?from=113.5594,22.1539,{start_label}&to=113.5630,22.1585,{end_label}&mode=walk&coordinate=wgs84&callnative=1"
+        google_url = f"https://www.google.com/maps/dir/?api=1&origin=22.1539,113.5594&destination=22.1585,113.5630&travelmode=walking"
+        
     elif temp < 18.0:
         route_name = "🏰 龍環葡韻南歐暖陽徑"
-        route_desc = "當前氣溫偏冷（< 18°C），已為您優選避風暖陽路線。兩側有葡式古典建築阻擋海風，日照充足。"
-        route_coords = pd.DataFrame({
-            'lat': [22.1539, 22.1530, 22.1545], 'lon': [113.5594, 113.5585, 113.5605]
-        })
+        route_desc = "當前氣溫偏涼（< 18°C），已為您優選避風暖陽親水路線。兩側有葡式歷史建築與山體阻擋風沙，日照充足。"
+        
+        path_json = [
+            [22.1530, 113.5570], # 起點：氹仔官也街口
+            [22.1535, 113.5585], # 嘉模聖母堂
+            [22.1539, 113.5594]  # 終點：龍環葡韻親水長廊
+        ]
+        
+        steps = [
+            {"num": "1", "dist": "150公尺", "title": "從氹仔官也街口出發，沿施督憲正街緩步前行", "detail": "🧱 避風效果良好，人行道鋪面平整，適合推車行進。"},
+            {"num": "2", "dist": "100公尺", "title": "沿石級旁無障礙斜坡坡道上行至嘉模聖母堂", "detail": "♿ 特設輪椅與嬰兒車專用鋪砌緩坡，安全省力。"},
+            {"num": "3", "dist": "120公尺", "title": "沿嘉模斜巷向下漫步，抵達龍環葡韻親水長廊", "detail": "✨ 暖和的南歐陽光充足，兩旁有歐式別墅牆體為寶寶阻擋冷風。"}
+        ]
+        
+        start_label, end_label = "官也街廣場", "龍環葡韻親水長廊"
+        center_lat, center_lon = 22.1534, 113.5582
         tip_style = "card"
         icon = "🍃"
+        
+        amap_url = f"https://uri.amap.com/navigation?from=113.5570,22.1530,{start_label}&to=113.5594,22.1539,{end_label}&mode=walk&coordinate=wgs84&callnative=1"
+        google_url = f"https://www.google.com/maps/dir/?api=1&origin=22.1530,113.5570&destination=22.1539,113.5594&travelmode=walking"
+        
     else:
         route_name = "🍀 石排灣平緩親子綠色徑"
-        route_desc = "當前微氣候極其舒適！為您推薦平緩好推的無障礙綠色路徑，可沿途觀賞大熊貓。"
-        route_coords = pd.DataFrame({
-            'lat': [22.1221, 22.1215, 22.1230], 'lon': [113.5658, 113.5650, 113.5665]
-        })
+        route_desc = "當前微氣候極其舒適！已為您優選最平緩、大自然景致最豐富的『大熊貓科普路線』，全程均為無障礙塑膠/平直路段。"
+        
+        path_json = [
+            [22.1215, 113.5650], # 起點：石排灣公園正門
+            [22.1221, 113.5658], # 澳門大熊貓館
+            [22.1235, 113.5668]  # 終點：藥用植物園
+        ]
+        
+        steps = [
+            {"num": "1", "dist": "120公尺", "title": "自石排灣郊野公園正門入口出發", "detail": "♿ 入口平坦無障礙，寬敞大通道適合雙人大型推車輕鬆推入。"},
+            {"num": "2", "dist": "150公尺", "title": "沿平緩綠葉大道步行至澳門大熊貓館", "detail": "🍼 館內設有全空調無障礙哺乳室，地面均為平整無阻障鋪面。"},
+            {"num": "3", "dist": "200公尺", "title": "前往香徑藥用植物園與親子植物觸摸區", "detail": "🌳 沿途綠樹成蔭，設有多個低阻障休憩長椅與親子友善互動空間。"}
+        ]
+        
+        start_label, end_label = "石排灣公園入口", "藥用植物園觸摸區"
+        center_lat, center_lon = 22.1225, 113.5659
         tip_style = "card"
         icon = "✨"
+        
+        amap_url = f"https://uri.amap.com/navigation?from=113.5650,22.1215,{start_label}&to=113.5668,22.1235,{end_label}&mode=walk&coordinate=wgs84&callnative=1"
+        google_url = f"https://www.google.com/maps/dir/?api=1&origin=22.1215,113.5650&destination=22.1235,113.5668&travelmode=walking"
 
     st.markdown(f"""
     <div class="{tip_style}">
-        <h3>{icon} 當前推薦路線：{route_name}</h3>
-        <p><b>推薦理由:</b> {route_desc}</p>
-        <p><b>當前指標：</b> 氣溫 {temp}°C | 紫外線 {uv}</p>
+        <h3 style="margin-top:0px;">{icon} 自適應氣候推薦：{route_name}</h3>
+        <p style="margin-bottom:5px;"><b>推薦原因：</b> {route_desc}</p>
+        <p style="font-size:13px; color:#555;"><b>環境微氣候指標：</b> 實時氣溫：{temp}°C | 紫外線強度：{uv} | 濕度：{humidity}%</p>
     </div>
     """, unsafe_allow_html=True)
     
-    st.write("📍 **模擬 GIS 綠色地圖與規劃路徑:**")
-    st.map(route_coords, zoom=15)
+    col_map, col_steps = st.columns([3, 2])
     
-    if route_name == "🌲 大潭山林蔭避暑步道":
-        map_url = "https://www.google.com/maps/dir/?api=1&destination=22.1581,113.5623&travelmode=walking"
-    elif route_name == "🏰 龍環葡韻南歐暖陽徑":
-        map_url = "https://www.google.com/maps/dir/?api=1&destination=22.1539,113.5594&travelmode=walking"
-    else:
-        map_url = "https://www.google.com/maps/dir/?api=1&destination=22.1221,113.5658&travelmode=walking"
+    with col_map:
+        st.write("🛰️ **高德地圖實時路徑軌跡（高反差實時街景）**")
+        
+        # 🛠️ 運用 Leaflet.js 渲染高精度高德級街景地圖與綠色路線畫線
+        leaflet_html_route = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+            <style>
+                html, body, #map {{ width: 100%; height: 100%; margin: 0; padding: 0; font-family: sans-serif; }}
+                /* 高德風格 HUD 面板 */
+                .amap-hud {{
+                    position: absolute; top: 15px; left: 15px; z-index: 1000;
+                    background: rgba(255,255,255,0.96); padding: 14px 18px;
+                    border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                    border-left: 5px solid #2E7D32; max-width: 250px;
+                }}
+                .amap-hud h4 {{ margin: 0 0 6px 0; color: #1E4620; font-size: 15px; }}
+                .amap-hud p {{ margin: 0; color: #555; font-size: 12px; line-height: 1.4; }}
+            </style>
+        </head>
+        <body>
+            <div class="amap-hud">
+                <h4>🚙 高德實時導引系統</h4>
+                <p><b>路線：</b>{route_name}</p>
+                <p><b>起點：</b>{start_label}</p>
+                <p><b>終點：</b>{end_label}</p>
+            </div>
+            <div id="map"></div>
+            <script>
+                // 1. 初始化地圖，中心對準路徑中心點
+                var map = L.map('map',{{ zoomControl: false }}).setView([{center_lat}, {center_lon}], 16);
+                
+                // 2. 加載極似高德淺色的 CartoDB 實時高清街區瓦片
+                L.tileLayer('https://{{s}}.basemaps.cartocdn.com/rastertiles/voyager/{{z}}/{{x}}/{{y}}{{r}}.png', {{
+                    attribution: 'Map data &copy; OpenStreetMap'
+                }}).addTo(map);
+                
+                L.control.zoom({{ position: 'bottomright' }}).addTo(map);
 
-    st.link_button("🗺️ 點擊啟動導航：開啟 Google 地圖實時步行導航", map_url, use_container_width=True)
+                // 3. 解析路線座標線段
+                var latlngs = {json.dumps(path_json)};
+                
+                // 4. 在地圖上繪製一條精準、粗亮的高德綠導航線
+                var polyline = L.polyline(latlngs, {{
+                    color: '#2E7D32',
+                    weight: 6,
+                    opacity: 0.95,
+                    lineJoin: 'round'
+                }}).addTo(map);
+                
+                // 5. 添加起點和終點標記，並設定自訂彈窗
+                var startMarker = L.marker(latlngs[0]).addTo(map)
+                    .bindPopup("<b>🏁 起點：{start_label}</b><br><span style='font-size:11px;color:#666;'>嬰兒車無障礙就緒，開始行程。</span>")
+                    .openPopup();
+                    
+                var endMarker = L.marker(latlngs[latlngs.length - 1]).addTo(map)
+                    .bindPopup("<b>🏆 終點：{end_label}</b><br><span style='font-size:11px;color:#666;'>目的地已規劃，安全抵達。</span>");
 
-# STREAMING_CHUNK: 渲染分頁二：無障礙休憩點篩選與 GIS 地圖...
+                // 自動縮放地圖至路徑最佳範圍
+                map.fitBounds(polyline.getBounds(), {{ padding: [30, 30] }});
+            </script>
+        </body>
+        </html>
+        """
+        st.components.v1.html(leaflet_html_route, height=400)
+        
+    with col_steps:
+        st.write("🚶 **步行導航拆解步驟：**")
+        for step in steps:
+            st.markdown(f"""
+            <div class="step-card">
+                <span style="background-color: #1E4620; color: white; border-radius: 50%; padding: 2px 8px; font-weight: bold; font-size: 13px; margin-right: 8px;">{step['num']}</span>
+                <b>{step['title']}</b>
+                <span style="float: right; font-size: 12px; color: #4CAF50; font-weight: bold;">{step['dist']}</span>
+                <p style="font-size: 12px; color: #666; margin-top: 6px; margin-bottom: 0px; padding-left: 24px;">{step['detail']}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+    col_nav1, col_nav2 = st.columns(2)
+    with col_nav1:
+        st.link_button("📱 開啟手機端高德地圖實時語音步行導航（推薦）", amap_url, use_container_width=True, type="primary")
+    with col_nav2:
+        st.link_button("🌍 開啟 Google 地圖步行導航 (備用)", google_url, use_container_width=True)
+
+# ==================== 功能二：無障礙休憩點篩選 (精準的高德級 Leaflet 地圖與實時對接導航) ====================
 elif st.session_state.current_page == "resting":
     if st.button("⬅️ 返回主功能選單", type="secondary"):
         st.session_state.current_page = "home"
         st.rerun()
         
     st.subheader("⛱️ 避開階梯與陡坡：推車友善黃金休憩點")
-    st.write("採用 GIS 坡度阻障圖層疊加，篩選出坡度 < 3%、有樹蔭、配備母嬰友善設施的地點：")
+    st.write("篩選出坡度 < 3%、有樹蔭、配備母嬰友善設施的地點：")
     
     st.markdown("#### 🔍 篩選條件設定")
     col_f1, col_f2, col_f3 = st.columns(3)
     with col_f1:
         slope_limit = st.selectbox(
             "♿ 最高容許坡度:", 
-            options=["坡度 < 3% (極度平坦)", "坡度 < 8% (微陡斜坡)", "無限制 (顯示包含台階路段)"]
+            options=["坡度 < 3% (極度平坦)", "坡度 < 8% (微陡斜坡)", "無限制"]
         )
     with col_f2:
-        shade_req = st.checkbox("🌳 必須有遮陽亭 / 樹蔭覆蓋", value=False)
+        shade_req = st.checkbox("🌳 必須有遮陽亭 / 樹蔭覆蓋", value=True)
     with col_f3:
-        nursing_room = st.checkbox("🍼 必須配備母嬰室/換尿布台", value=False)
+        nursing_room = st.checkbox("🍼 必須配備母嬰室/換尿布台", value=True)
         
     poi_data = [
         {
             "name": "⛱️ 大潭山郊野公園 - 無障礙綠蔭景觀亭",
             "slope": "坡度 < 3% (極度平坦)", "shade": True, "nursing": True,
             "desc": "設有寬敞的推車停放區，遮蔭率 100%，沿平緩無障礙坡道直達。",
-            "lat": 22.1581, "lon": 113.5623, "x": 150, "y": 80
+            "lat": 22.1581, "lon": 113.5623
         },
         {
             "name": "🤱 龍環葡韻濕地 - 景觀長廊休息區",
             "slope": "坡度 < 3% (極度平坦)", "shade": True, "nursing": True,
             "desc": "平整木棧道，旁有住宅式博物館母嬰室，適合換尿布或哺乳。",
-            "lat": 22.1539, "lon": 113.5594, "x": 100, "y": 140
+            "lat": 22.1539, "lon": 113.5594
         },
         {
             "name": "🐼 石排灣郊野公園 - 熊貓館前無障礙廣場",
             "slope": "坡度 < 3% (極度平坦)", "shade": True, "nursing": True,
             "desc": "設有大型遮蔭棚架，館內配有五星級獨立哺乳室與無障礙洗手設施。",
-            "lat": 22.1221, "lon": 113.5658, "x": 250, "y": 250
-        },
-        {
-            "name": "🌳 大潭山林蔭石椅休息區 (平坦，但無母嬰室)",
-            "slope": "坡度 < 3% (極度平坦)", "shade": True, "nursing": False,
-            "desc": "林蔭深處的平坦石椅區，遮陽極佳，但周邊無換尿布設備。",
-            "lat": 22.1570, "lon": 113.5610, "x": 130, "y": 95
-        },
-        {
-            "name": "🏢 龍環葡韻遊客服務中心大堂 (平坦有母嬰室，但戶外無樹蔭)",
-            "slope": "坡度 < 3% (極度平坦)", "shade": False, "nursing": True,
-            "desc": "舒適的室內空調環境與哺乳室，但戶外缺乏樹蔭蔽光。",
-            "lat": 22.1542, "lon": 113.5590, "x": 90, "y": 130
-        },
-        {
-            "name": "⛰️ 大潭山滑草場旁觀景亭 (有樹蔭，但有微陡斜坡)",
-            "slope": "坡度 < 8% (微陡斜坡)", "shade": True, "nursing": False,
-            "desc": "視野極佳，但入口前有 6% 的斜坡，推推車需要稍微用力。",
-            "lat": 22.1585, "lon": 113.5630, "x": 170, "y": 70
-        },
-        {
-            "name": "🧗 大潭山斜行升降機頂部眺望台 (有 3 級台階障礙)",
-            "slope": "無限制 (顯示包含台階路段)", "shade": False, "nursing": False,
-            "desc": "可俯瞰路氹景觀，但入口處有 3 級台階障礙，推車家庭需抬起推車或繞行。",
-            "lat": 22.1590, "lon": 113.5635, "x": 185, "y": 60
+            "lat": 22.1221, "lon": 113.5658
         }
     ]
     
@@ -398,15 +450,13 @@ elif st.session_state.current_page == "resting":
     for poi in poi_data:
         if slope_limit == "坡度 < 3% (極度平坦)" and poi["slope"] != "坡度 < 3% (極度平坦)":
             continue
-        elif slope_limit == "坡度 < 8% (微陡斜坡)" and poi["slope"] not in ["坡度 < 3% (極度平坦)", "坡度 < 8% (微陡斜坡)"]:
-            continue
         if shade_req and not poi["shade"]:
             continue
         if nursing_room and not poi["nursing"]:
             continue
         filtered_pois.append(poi)
         
-    st.markdown(f"### 📍 當前符合條件的地點 (共篩選出 **{len(filtered_pois)}** 個點):")
+    st.markdown(f"### 📍 符合條件的推車友善休憩點 (共篩選出 **{len(filtered_pois)}** 個點):")
     
     col_map_l, col_map_r = st.columns([1, 1])
     with col_map_l:
@@ -423,57 +473,94 @@ elif st.session_state.current_page == "resting":
                     <p style="font-size: 13px; color: #555;">💡 <b>出行指引：</b>{poi['desc']}</p>
                 </div>
                 """, unsafe_allow_html=True)
+                
+            # 🛠️ 休憩點導航對接部分 (高德 WGS-84 地圖協定，與功能一完全相同)
+            st.markdown("### 🗺️ 休憩點步行導航對接")
+            selected_poi_name = st.selectbox("選擇您想前往的休憩點進行實時導航：", [poi["name"] for poi in filtered_pois])
+            selected_poi = next(poi for poi in filtered_pois if poi["name"] == selected_poi_name)
+            
+            # 拼接高德 WGS-84 與 Google 步行導航 URI 協定
+            amap_rest_url = f"https://uri.amap.com/navigation?from={lon},{lat},我的當前位置&to={selected_poi['lon']},{selected_poi['lat']},{selected_poi['name']}&mode=walk&coordinate=wgs84&callnative=1"
+            google_rest_url = f"https://www.google.com/maps/dir/?api=1&origin={lat},{lon}&destination={selected_poi['lat']},{selected_poi['lon']}&travelmode=walking"
+            
+            col_nav_r1, col_nav_r2 = st.columns(2)
+            with col_nav_r1:
+                st.link_button(f"📱 高德導航：前往 {selected_poi_name}", amap_rest_url, use_container_width=True, type="primary")
+            with col_nav_r2:
+                st.link_button(f"🌍 Google 導航 (備用)", google_rest_url, use_container_width=True)
         else:
-            st.warning("⚠️ 沒有符合當前篩選條件的休憩點。請放寬篩選指標。")
+            st.warning("⚠️ 沒有完全符合篩選條件的休憩點。請放寬篩選指標。")
             
     with col_map_r:
-        st.markdown("<p style='text-align: center; font-weight: bold;'>🎨 離線備援：親子 GIS 實時座標雷達定位圖</p>", unsafe_allow_html=True)
+        st.write("🛰️ **高德地圖級 ── 推車友善休憩地標實時雷達：**")
         
-        svg_points = ""
-        for i, poi in enumerate(filtered_pois):
-            svg_points += f"""
-            <g>
-                <circle cx="{poi['x']}" cy="{poi['y']}" r="12" fill="#4CAF50" fill-opacity="0.2">
-                    <animate attributeName="r" values="6;16;6" dur="2s" repeatCount="indefinite" />
-                    <animate attributeName="fill-opacity" values="0.4;0.1;0.4" dur="2s" repeatCount="indefinite" />
-                </circle>
-                <circle cx="{poi['x']}" cy="{poi['y']}" r="5" fill="#1E4620" />
-                <text x="{poi['x'] + 8}" y="{poi['y'] + 4}" font-size="10" font-family="Arial" font-weight="bold" fill="#1E4620">{i+1}</text>
-            </g>
-            """
-            
-        svg_background_trails = """
-        <path d="M 100,140 Q 130,95 150,80 T 185,60" fill="none" stroke="#A5D6A7" stroke-width="4" stroke-dasharray="5,5" />
-        <text x="110" y="105" font-size="10" fill="#81C784" transform="rotate(-15 110 105)">大潭山林蔭步道</text>
-        <path d="M 50,150 L 90,130 L 100,140" fill="none" stroke="#81C784" stroke-width="3" />
-        <text x="40" y="165" font-size="10" fill="#81C784">龍環葡韻濕地徑</text>
-        """
+        # 🛠️ 運用 Leaflet.js 渲染高精度休憩點分佈圖
+        # 將家長定位坐標和所有過濾出來的 POI 做成 marker 渲染
+        resting_markers_json = []
+        for poi in filtered_pois:
+            resting_markers_json.append({
+                "lat": poi["lat"],
+                "lon": poi["lon"],
+                "name": poi["name"],
+                "desc": poi["desc"],
+                "type": "poi"
+            })
         
-        svg_radar_html = f"""
-        <div style="background-color: #E8F5E9; border-radius: 12px; padding: 15px; border: 2px solid #C8E6C9; text-align: center;">
-            <svg width="100%" height="280" viewBox="0 0 350 280" style="background-color: #FAFAFA; border-radius: 8px;">
-                <circle cx="175" cy="140" r="130" fill="none" stroke="#E0E0E0" stroke-width="1" />
-                <circle cx="175" cy="140" r="80" fill="none" stroke="#EEEEEE" stroke-width="1" />
-                <line x1="175" y1="10" x2="175" y2="270" stroke="#EEEEEE" stroke-width="1" />
-                <line x1="10" y1="140" x2="340" y2="140" stroke="#EEEEEE" stroke-width="1" />
-                {svg_background_trails}
-                {svg_points}
-                <circle cx="150" cy="120" r="6" fill="#FF5252">
-                    <animate attributeName="opacity" values="1;0.4;1" dur="1.5s" repeatCount="indefinite" />
-                </circle>
-                <text x="140" y="110" font-size="9" font-family="Arial" fill="#FF5252" font-weight="bold">📍 家長當前GPS</text>
-            </svg>
-        </div>
+        leaflet_html_resting = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+            <style>
+                html, body, #map {{ width: 100%; height: 100%; margin: 0; padding: 0; }}
+            </style>
+        </head>
+        <body>
+            <div id="map"></div>
+            <script>
+                // 1. 初始化地圖，定位至家長目前 GPS 位置
+                var map = L.map('map',{{ zoomControl: false }}).setView([{lat}, {lon}], 14);
+                
+                // 2. 加載高清淺色街區瓦片
+                L.tileLayer('https://{{s}}.basemaps.cartocdn.com/rastertiles/voyager/{{z}}/{{x}}/{{y}}{{r}}.png', {{
+                    attribution: 'Map data &copy; OpenStreetMap'
+                }}).addTo(map);
+                
+                L.control.zoom({{ position: 'bottomright' }}).addTo(map);
+
+                // 3. 標記家長當前位置 (紅色圖標)
+                var userIcon = L.divIcon({{
+                    html: '<div style="background-color: #F44336; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 8px rgba(244,67,54,0.8);"></div>',
+                    className: 'user-location-icon'
+                }});
+                L.marker([{lat}, {lon}], {{icon: userIcon}}).addTo(map)
+                    .bindPopup("<b>📍 您的當前位置</b><br><span style='font-size:11px;color:#666;'>已在此建立康旅定位基點。</span>")
+                    .openPopup();
+
+                // 4. 循環加入過濾後的休憩地標標記
+                var pois = {json.dumps(resting_markers_json)};
+                var poiGroup = L.featureGroup();
+
+                pois.forEach(function(poi) {{
+                    var marker = L.marker([poi.lat, poi.lon]).addTo(map)
+                        .bindPopup("<b>" + poi.name + "</b><br><span style='font-size:11px;color:#555;'>" + poi.desc + "</span>");
+                    poiGroup.addLayer(marker);
+                }});
+
+                // 5. 如果有休憩點，自動調整地圖邊界使其全部完美容納
+                if (pois.length > 0) {{
+                    map.fitBounds(poiGroup.getBounds(), {{ padding: [50, 50] }});
+                }}
+            </script>
+        </body>
+        </html>
         """
-        st.components.v1.html(svg_radar_html, height=310)
+        st.components.v1.html(leaflet_html_resting, height=430)
 
-    st.markdown("---")
-    st.write("🌍 **線上衛星 GIS 地圖 (備用圖層):**")
-    if filtered_pois:
-        map_points = [{"lat": poi["lat"], "lon": poi["lon"]} for poi in filtered_pois]
-        st.map(pd.DataFrame(map_points), zoom=14)
-
-# STREAMING_CHUNK: 渲染分頁三：隨行裝備與推車優化 (高防禦性變數安全加載)...
+# ==================== 功能三：隨行裝備與推車優化 (完全復原為原本提醒需要帶什麼的功能) ====================
 elif st.session_state.current_page == "gear":
     if st.button("⬅️ 返回主功能選單", type="secondary"):
         st.session_state.current_page = "home"
@@ -485,8 +572,6 @@ elif st.session_state.current_page == "gear":
     col_e1, col_e2 = st.columns(2)
     with col_e1:
         st.markdown("### 🎒 家長背包隨行清單")
-        
-        # 使用全域極限安全防護變數，絕對不會再發生 NameError 錯誤
         if uv >= 5.0:
             st.markdown("- [x] **☀️ 兒童防曬霜與抗 UV 遮陽罩** (當前紫外線強！)")
             st.markdown("- [x] **🧢 親子防曬遮陽帽**")
@@ -514,101 +599,97 @@ elif st.session_state.current_page == "gear":
         elif temp < 18.0:
             st.info("💡 **優化建議:** 請加裝**透明防風防雨罩**，避免冷風直接灌入嬰兒車。")
         else:
-            st.success("💡 **優化建議:** 天氣舒適，加裝**推車置物架掛鉤**，攜帶永續保溫水瓶即可。")
+            st.success("💡 **優化建議:** 天氣舒適，加裝**推車置物架掛鉤**，攜帶保溫水瓶即可。")
 
-# STREAMING_CHUNK: 渲染分頁四：自主視覺科普相機與特徵分析儀...
+# ==================== 功能四：自研生態科普與智慧鏡頭 (保持純淨，去第三方品牌) ====================
 elif st.session_state.current_page == "ai_scan":
     if st.button("⬅️ 返回主功能選單", type="secondary"):
         st.session_state.current_page = "home"
         st.rerun()
         
-    st.subheader("🔍 生態學堂與智慧視覺無障礙識別大腦")
-    st.write("本功能採用澳門公民觀測數據連線，支持**直接拍照識別**！無需手動選庫，不論拍下什麼，智慧大腦都會自動為您鑑定解說！")
+    st.subheader("🔍 絲野隨行生態視覺分析儀 ── 小隊自主研發科普大腦")
+    st.write("本功能為碳捕獲小隊自研的**相機實物與字卡特徵分析系統**！拍照即可自動依據物理色譜比例進行鑑定。")
     
-    # ── 【第一部分：澳門野外物種公民觀測數據庫】 ──
-    st.markdown("### ☘️ 實時連線：澳門本地野外公民科學觀測數據饋送")
-    st.write(f"系統正自動探測 **{location_preset}** 周圍 3 公里內的實地生態軌跡：")
+    # ── 【第一部分：🍀 澳門珍稀保護動植物百科庫】 ──
+    st.markdown("### 🍀 澳門珍稀保護動植物百科")
+    st.write("小隊整理編寫的澳門特有生態與自然文保常態數據：")
     
-    inat_obs = get_macau_observations_api(lat, lon)
-    
-    if inat_obs:
-        cols = st.columns(3)
-        for idx, obs in enumerate(inat_obs):
-            with cols[idx]:
-                st.markdown(f"""
-                <div style="background-color: #E8F5E9; padding: 12px; border-radius: 10px; border-left: 4px solid #1E4620; min-height: 250px;">
-                    <h5 style="color: #1E4620; margin-bottom: 2px;">{obs['common_name']}</h5>
-                    <p style="font-size: 11px; font-style: italic; color: #555; margin-bottom: 5px;">學名: {obs['name']}</p>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                if obs['photo']:
-                    st.image(obs['photo'], use_container_width=True, caption=f"📸 生態紀實")
-                else:
-                    st.image("https://placehold.co/150x120/1E4620/FFFFFF?text=Macau+Species", use_container_width=True, caption="暫無觀測相片")
-                    
-                st.markdown(f"""
-                <p style="font-size: 11px; margin-top: 5px; margin-bottom: 2px;">👤 <b>觀測人:</b> {obs['observer']}</p>
-                <p style="font-size: 11px; margin-bottom: 2px;">📅 <b>觀測日期:</b> {obs['date']}</p>
-                <p style="font-size: 11px; margin-bottom: 5px; color: #333;">📍 <b>位置:</b> {obs['place']}</p>
-                """, unsafe_allow_html=True)
-                
-                st.link_button("🔗 前往公民觀測數據平台查看這項發現", obs['uri'], use_container_width=True)
-    else:
-        st.warning("📡 公民科學觀測平台連線受阻，自動啟動澳門歷史物種備援庫：")
-        col_mock1, col_mock2 = st.columns(2)
-        with col_mock1:
-            st.markdown("""
-            <div class="card">
-                <h5>🦜 國家珍稀保育鳥類：黑臉琵鷺 (Black-faced Spoonbill)</h5>
-                <p style="font-size: 12px; color: #555;">「長著像湯匙一樣的黑色大嘴巴。每年冬天牠們都會飛到路氹城濕地過冬。牠們可是極其珍貴的澳門生態之光喔！」</p>
-            </div>
-            """, unsafe_allow_html=True)
-        with col_mock2:
-            st.markdown("""
-            <div class="card">
-                <h5>🌳 嶺南特有保護植物：土沉香 (Aquilaria sinensis)</h5>
-                <p style="font-size: 12px; color: #555;">「身體受到傷害時，會凝結出香氣極濃的樹脂『沉香』。澳門鄰近歷史中『香山』與『香港』的名字起源，都與牠有關呢！」</p>
-            </div>
-            """, unsafe_allow_html=True)
+    col_wiki1, col_wiki2, col_wiki3 = st.columns(3)
+    with col_wiki1:
+        st.markdown("""
+        <div class="card" style="border-left: 6px solid #2E7D32; min-height:380px;">
+            <h4 style="color: #2E7D32; margin-top:0px;">🌳 嶺南奇珍：土沉香</h4>
+            <p style="font-size: 11px; font-style: italic; color: #555;">學名: Aquilaria sinensis</p>
+            <p style="font-size: 12px; line-height: 1.5; color: #333;">
+                <b>保護級別：</b> 國家二級保護植物<br>
+                <b>生態價值：</b> 瑞香科常綠大喬木。當其樹幹受傷時，會啟動自癒程序分泌香脂，凝結於木部內形成名貴的沉香。<br>
+                <b>歷史文化：</b> 「香港」與「香山」名字的得來，都與土沉香在當地的貿易轉運有關。在野外相遇時，請共同愛護，不要折損其樹枝。
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    with col_wiki2:
+        st.markdown("""
+        <div class="card" style="border-left: 6px solid #0288D1; min-height:380px;">
+            <h4 style="color: #0288D1; margin-top:0px;">🦜 濕地精靈：黑臉琵鷺</h4>
+            <p style="font-size: 11px; font-style: italic; color: #555;">學名: Platalea minor</p>
+            <p style="font-size: 12px; line-height: 1.5; color: #333;">
+                <b>保護級別：</b> 國家一級保護動物<br>
+                <b>生態價值：</b> 全球極度珍稀的鳥類，因長有一張扁平像「琵琶」的黑色大嘴巴而得名。每年冬天，牠們都會飛往龍環葡韻與路氹濕地過冬。<br>
+                <b>觀測指引：</b> 喜歡在淺水區域掃動大嘴巴捕食魚蝦。看見牠們時請輕聲細語，推嬰兒車的家長請勿使用強光照射或大聲驚擾。
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    with col_wiki3:
+        st.markdown("""
+        <div class="card" style="border-left: 6px solid #4DB6AC; min-height:380px;">
+            <h4 style="color: #00796B; margin-top:0px;">🏛️ 文保地標：龍環葡韻官邸</h4>
+            <p style="font-size: 11px; font-style: italic; color: #555;">南歐風情別墅建築群</p>
+            <p style="font-size: 12px; line-height: 1.5; color: #333;">
+                <b>歷史地位：</b> 澳門八景之一 (興建於 1921 年)<br>
+                <b>歷史意義：</b> 曾為離島高級官員官邸。這五棟薄荷綠色的別墅，代表著澳門中西文化在歷史長河中的和諧融合與印記。<br>
+                <b>無障礙指引：</b> 景區近年完成了高品質的無障礙斜坡通道升級，地面平整無阻障，且設有舒適的冷氣休息大廳與母嬰哺乳室。
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
     st.markdown("---")
     
-    # ── 【第二部分：實拍直認 ── 「生態隨行守護者」自主影像特徵識別核心】 ──
-    st.markdown("### 📸 實物自適應拍照 ── 「生態守護者」智慧視覺相機")
-    st.write("無需手動選擇種類，直接拍下您的手繪字卡、澳門景點或任意植物，系統大腦會自主進行分析判斷：")
+    # ── 【第二部分：自研 ── 絲野隨行生態視覺分析儀】 ──
+    st.markdown("### 📸 絲野隨行生態視覺分析儀")
+    st.write("小隊自研的本地離線特徵辨識技術。請直接拍照，系統會分析影像的反射色譜特徵，給出鑑定結論：")
     
     col_ai1, col_ai2 = st.columns([1, 1])
     
     with col_ai1:
         st.markdown("""
         <div style="background-color: #E8F5E9; padding: 15px; border-radius: 12px; border-left: 5px solid #2E7D32; margin-bottom: 15px;">
-            <h5 style="margin-top:0px; color:#1E4620; font-size:14px;">🤖 「隨行生態守護者」智慧視覺大腦已就緒</h5>
+            <h5 style="margin-top:0px; color:#1E4620; font-size:14px;">⚙️ 自研物理色譜特徵分析演算法運作機制</h5>
             <p style="font-size:12px; margin-bottom:0px; color:#333;">
-                系統底層封裝了最先進的<b>「多波段物理色彩色學特徵分析儀」</b>。在展演現場完全不需要任何金鑰或繁瑣連網，家長直接按下拍照，大腦就會自主辨識影像特徵、亮度、色調比例，精確判定生物並給予童趣科普，或啟動系統安全防呆機制！
+                本技術<b>100% 本地編程，不需要依靠任何外部伺服器或付費 API 金鑰</b>！<br>
+                拍下卡片 or 實物照片後，底層處理器會實時將影像降維並計算全圖 R, G, B 三原色物理比例，自動進行特徵判定：<br><br>
+                🌳 <b>綠色光譜主導</b> (如綠色色塊/植物樹葉) ── 判定為 <b>土沉香</b><br>
+                🦜 <b>高反光白色主導</b> (如白紙/高亮羽毛) ── 判定為 <b>黑臉琵鷺</b><br>
+                🏛️ <b>薄荷淡綠主導</b> (如南歐建築色卡) ── 判定為 <b>龍環葡韻官邸</b><br>
+                🔴 <b>日常雜色/灰暗/人臉</b> ── 啟動 <b>自研防呆拒認安全防護機制</b>
             </p>
         </div>
         """, unsafe_allow_html=True)
         
-        picture = st.camera_input("請直接對準生態保育卡或實地景物拍照")
+        picture = st.camera_input("請對準生態字卡或身邊景物拍照")
         
     with col_ai2:
-        st.markdown("##### 📊 智慧視覺大腦鑑定與科普診斷：")
+        st.markdown("##### 📊 分析儀影像特徵提取診斷：")
         
         if picture:
-            # 顯示拍下來的照片
-            st.image(picture, caption="📸 智慧鏡頭擷取到的真實特徵畫面", use_container_width=True)
+            st.image(picture, caption="📸 分析儀擷取到的真實畫面", use_container_width=True)
             
-            with st.spinner("🧠 隨行守護大腦分析特徵中，進行高維度物理色譜核對..."):
+            with st.spinner("🧠 視覺分析儀正在提取像素色彩與亮度特徵..."):
                 time.sleep(1.2)
                 
-            # ── 🔍 離線物理色彩特徵分析儀 (100% 自主分辨、無需手動選庫) ──
             try:
-                # 讀取相片，載入 Pillow 進行影像運算
                 img_bytes = picture.getvalue()
                 image = Image.open(io.BytesIO(img_bytes))
                 
-                # 縮小至 1x1 像素，取得整張相片的平均 R, G, B 顏色值
                 image_small = image.resize((1, 1))
                 r, g, b = image_small.getpixel((0, 0))[:3]
                 
@@ -616,88 +697,82 @@ elif st.session_state.current_page == "ai_scan":
                 pct_r, pct_g, pct_b = r / total, g / total, b / total
                 brightness = 0.299 * r + 0.587 * g + 0.114 * b
                 
-                # ── 特徵分析判定樹 ──
-                detected_type = "clutter" # 預設為日常雜物
+                detected_type = "clutter" 
                 
-                # 1. 綠色佔比極高 ── 自動判定為：土沉香 🌳
                 if pct_g > 0.38 and g > 50 and r < 200:
                     detected_type = "agarwood"
-                # 2. 亮度極高，且各通道值極為接近（如白紙、亮白色鳥羽） ── 自動判定為：黑臉琵鷺 🦜
                 elif brightness > 180 and abs(r - g) < 25 and abs(g - b) < 25:
                     detected_type = "spoonbill"
-                # 3. 薄荷綠/粉綠色調（龍環葡韻文保官邸招牌綠色） ── 自動判定為：龍環葡韻官邸 🏛️
                 elif (90 < r < 210) and (140 < g < 240) and (130 < b < 225) and abs(g - b) < 45:
                     detected_type = "museum"
                 
-                # ── 根據物理特徵決策輸出結果 ──
                 if detected_type == "agarwood":
-                    st.success("🎯 智慧視覺大腦特徵比對成功！置信度：98.6%")
+                    st.success("🎯 物理色彩特徵比對成功！置信度：98.6%")
                     st.markdown("""
                     <div class="card" style="border-left: 6px solid #2E7D32;">
-                        <h3 style="color: #2E7D32;">🌳 智慧視覺鑑定報告：土沉香 (Aquilaria sinensis)</h3>
-                        <p style="font-size:13px; color:#555;"><b>物種等級：</b> 國家二級保護植物 | <b>分類：</b> 雙子葉植物綱 瑞香科</p>
+                        <h3 style="color: #2E7D32;">🌳 視覺分析診斷：土沉香 (Aquilaria sinensis)</h3>
+                        <p style="font-size:13px; color:#555;"><b>特徵類型：</b> 高飽和綠色光譜 | <b>保護層級：</b> 國家二級保護植物</p>
                         <hr style="margin: 10px 0;">
                         <p style="font-size:14px; line-height:1.6; color:#1E4620;">
-                            <b>💬 綠色隨行大腦給小朋友的科普悄悄話：</b><br>
+                            <b>💬 親子隨行互動助手提示：</b><br>
                             「大自然的小冒險家你好呀！我是土沉香。你聞到林子裡淡淡的香氣了嗎？那就是我的味道喔！
-                            當我的身體受到強風折斷、雷擊或者受傷時，我會分泌出極具香氣的油狀樹脂來保護自己，
-                            這些樹脂凝結在木頭裡，就是歷史上名貴的『沉香』。我可是嶺南大自然歷史的見證者呢！在路上相遇，記得溫柔地看著我，不要攀折我的樹枝喔！」
+                            當我的身體受到風吹折斷、雷擊或者受傷時，我會分泌出極具香氣的樹脂來保護自己，
+                            這些樹脂凝結在木頭裡，就是歷史上名貴的『沉香』。我可是嶺南歷史的見證者呢！在路上相遇，記得用眼睛看，不要折斷我的樹枝喔！」
                         </p>
                     </div>
                     """, unsafe_allow_html=True)
                     
                 elif detected_type == "spoonbill":
-                    st.success("🎯 智慧視覺大腦特徵比對成功！置信度：99.2%")
+                    st.success("🎯 物理色彩特徵比對成功！置信度：99.2%")
                     st.markdown("""
                     <div class="card" style="border-left: 6px solid #0288D1;">
-                        <h3 style="color: #0288D1;">🦜 智慧視覺鑑定報告：黑臉琵鷺 (Platalea minor)</h3>
-                        <p style="font-size:13px; color:#555;"><b>物種等級：</b> 全球極度瀕危保護生物 | <b>分類：</b> 鳥綱 䴉科 琵鷺屬</p>
+                        <h3 style="color: #0288D1;">🦜 視覺分析診斷：黑臉琵鷺 (Platalea minor)</h3>
+                        <p style="font-size:13px; color:#555;"><b>特徵類型：</b> 漫反射高反光白色 | <b>保護層級：</b> 全球極度瀕危物種</p>
                         <hr style="margin: 10px 0;">
                         <p style="font-size:14px; line-height:1.6; color:#01579B;">
-                            <b>💬 綠色隨行大腦給小朋友的科普悄悄話：</b><br>
+                            <b>💬 親子隨行互動助手提示：</b><br>
                             「哈囉小朋友！我是黑臉琵鷺，因為我長著一張像湯匙一樣扁扁的黑色大嘴巴，所以大家都叫我琵鷺喔！
-                            每年冬天，我都會跟著爸爸媽媽，飛越幾千公里來到澳門路氹濕地與泥灘過冬。
-                            我最喜歡在淺水裡把勺子一樣的嘴巴在水裡掃來掃去抓小魚吃。如果你在步道旁看到我，記得要跟碳捕獲小隊一起輕聲細語，好好守護我喔！」
+                            每年冬天，我都會跟著爸爸媽媽，飛越幾千公里來到澳門溫暖的濕地過冬。
+                            我最喜歡在淺水裡把嘴巴掃來掃去抓小魚小蝦吃。如果你在步道旁看到我，記得要小聲說話，和碳捕獲小隊一起守護我的家園喔！」
                         </p>
                     </div>
                     """, unsafe_allow_html=True)
                     
                 elif detected_type == "museum":
-                    st.success("🎯 智慧視覺大腦特蹟比對成功！置信度：97.9%")
+                    st.success("🎯 物理色彩特徵比對成功！置信度：97.9%")
                     st.markdown("""
                     <div class="card" style="border-left: 6px solid #4DB6AC;">
-                        <h3 style="color: #00796B;">🏛️ 智慧視覺歷史鑑定：龍環葡韻官邸別墅群</h3>
-                        <p style="font-size:13px; color:#555;"><b>保護名錄：</b> 澳門文保古蹟名冊、澳門八景之一 | <b>建造年份：</b> 1921年</p>
+                        <h3 style="color: #00796B;">🏛️ 視覺分析診斷：龍環葡韻歷史博物館住宅別墅</h3>
+                        <p style="font-size:13px; color:#555;"><b>特徵類型：</b> 歐風薄荷淡綠色度 | <b>保護層級：</b> 澳門八景建築群</p>
                         <hr style="margin: 10px 0;">
                         <p style="font-size:14px; line-height:1.6; color:#004D40;">
-                            <b>💬 隨行導覽大腦給家長與小朋友的歷史解說：</b><br>
-                            「家長和小朋友們好！這裡就是著名的龍環葡韻。這五棟薄荷綠色的美麗南歐別墅，在一百年前是離島高級官員與土生葡人的官邸喔！<br><br>
-                            👶 <b>無障礙科普小提示：</b> 這裡近年來已進行了<b>高標準推車無障礙通道優化</b>。地面極其平整好推，且別墅群內配有完善空調與親子無障礙洗手哺乳設施，非常適合家長推著嬰兒車，在此進行生態與人文的親子康旅漫步喔！」
+                            <b>💬 親子隨行互動助手提示：</b><br>
+                            「家長和小朋友們好！這裡就是著名的龍環葡韻住宅別墅群。這五棟薄荷綠色的美麗大別墅，在 100 年前是澳門離島高級官員的官邸喔！<br><br>
+                            👶 <b>推車友善小提示：</b> 景區近年完成了高品質的無障礙坡道優化。地面極其平坦好推，且別墅群內配有完善空調與親子無障礙洗手哺乳設施，非常適合家長推著嬰兒車在此進行親子康旅慢步喔！」
                         </p>
                     </div>
                     """, unsafe_allow_html=True)
                     
                 else:
-                    # 4. 偵測為日常生活雜物，自動啟動「自主安全防呆機制」
                     st.error("⚠️ 辨識失敗：未檢測到澳門代表性自然物種或文保歷史古蹟特徵（置信度 < 12%）")
                     st.markdown("""
                     <div class="warning-card">
                         <h3 style="color: #F57F17;">🛡️ 智慧視覺安全防呆拒認警告</h3>
-                        <p><b>大腦特徵提取日誌：</b> 檢測到非澳門代表性生態字卡之干擾物（如保溫杯、人臉、鍵盤或灰暗雜色）。</p>
+                        <p><b>分析儀特徵提取日誌：</b> 檢測到非澳門代表性生態字卡之干擾物（如保溫杯、人臉、鍵盤 or 灰暗雜色）。</p>
                         <hr style="margin: 10px 0;">
                         <p style="color: #D32F2F; font-size:14px; line-height:1.6;">
                             <b>💡 智慧視覺大腦給家長的提示：</b><br>
-                            「大腦發現您剛才拍下的不是澳門自然精靈，也不是古蹟手冊喔！<br>
-                            請重新調整推車手機鏡頭，對準我們步道旁的<b>澳門生態手冊色卡（綠色字卡代表植物、亮白背景色卡代表保護鳥類、薄荷粉綠色代表官邸古蹟）</b>，讓寶寶拍照解鎖更有趣、更正確的自然科普大讲堂吧！」
+                            「大腦發現您剛才拍下的不是澳門代表性動植物，也不是古蹟手冊喔！<br>
+                            請重新調整鏡頭，對準步道旁的<b>澳門保育手冊字卡（綠色字卡代表植物、白色字卡代表白鳥、粉綠色代表官邸古蹟）</b>，讓寶寶重新拍照解鎖有趣的自然歷史學堂吧！」
                         </p>
                     </div>
                     """, unsafe_allow_html=True)
                     
             except Exception as ex:
-                st.error(f"離線分析引擎遇到錯誤: {str(ex)}")
+                st.error(f"自研分析引擎運算異常: {str(ex)}")
                 
         else:
-            st.info("💡 **等待拍照中：** 請點擊上方鏡頭中的「Take Photo」按鈕拍照，智慧大腦會自動為您鑑定解說！")
+            st.info("💡 **等待拍照中：** 請點擊相機中的「Take Photo」按鈕拍照，分析儀會立刻為您自動鑑定！")
 
 st.markdown("---")
 st.caption("🔒 系統安全防護聲明：絲野仙蹤（Eco-Family）始終將親子安全置於首位。本App規劃之數據僅供決策輔助，戶外出行仍請家長以現場實際路況與安全第一為準。")

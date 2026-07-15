@@ -272,7 +272,7 @@ def get_macau_weather(lat, lon):
                 "uv": current["uv_index"],
                 "rain": current["precipitation"] > 0,
                 "wind": current["wind_speed_10m"],
-                "mode": "🟢 實時連線模式"
+                "mode": "🟢 實時連線模式"1
             }
     except Exception:
         pass

@@ -237,7 +237,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ==================== 4. 實時外部微氣候 API 串接模組 ====================
+# ==================== 4. 實時外部天氣 API 串接模組 ====================
 def get_macau_weather(lat, lon):
     url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,uv_index&timezone=Asia%2FShanghai"
     try:
@@ -332,7 +332,7 @@ with st.expander("⚙️ 調整出行定位與環境模擬..."):
         st.session_state.global_temp = sim_temp
         st.session_state.global_uv = sim_uv
     else:
-        st.success(f"📱 系統正在讀取澳門實時微氣候數據。")
+        st.success(f"📱 系統正在讀取澳門實時天氣數據。")
 
 st.markdown("<hr style='margin: 15px 0; border: none; border-top: 1px solid #E0E0E0;'>", unsafe_allow_html=True)
 
@@ -340,7 +340,7 @@ st.markdown("<hr style='margin: 15px 0; border: none; border-top: 1px solid #E0E
 if st.session_state.current_page == "home":
     st.markdown("<h3 style='margin-bottom:12px; font-size:1.35rem;'>📱 親子出行隨行工具：</h3>", unsafe_allow_html=True)
     
-    # 🛠️ 終極同源鏡像設計：徹底移除描述文字！
+    # 🛠️ 終極同源鏡像設計：徹底移除描述文字！第一個卡片標題更名為「智慧規劃路線」。
     # 高度精確固定為 160px。在手機上顯示效果極其驚艷、對齊 100%、且完全沒有任何看不完的 Bug！
     st.markdown("""
     <div class="grid-container">
@@ -363,7 +363,7 @@ if st.session_state.current_page == "home":
     </div>
     """, unsafe_allow_html=True)
 
-# ==================== 功能一：智慧規劃路線 (高德地圖級：Leaflet高清街區地圖、手機觸控完美適配) ====================
+# ==================== 功能一：智慧規劃路線 (實時地圖級：Leaflet高清街區地圖、手機觸控完美適配) ====================
 elif st.session_state.current_page == "route":
     if st.button("⬅️ 返回主選單", type="secondary"):
         st.query_params.clear() # 清空查詢參數，返回主畫面
@@ -413,7 +413,7 @@ elif st.session_state.current_page == "route":
 
     st.markdown(f"""
     <div class="{tip_style}">
-        <h4 style="margin-top:0px; font-size:1.4rem;">{icon} 自適應氣候推薦：{route_name}</h4>
+        <h4 style="margin-top:0px; font-size:1.4rem;">{icon} 自適應天氣推薦：{route_name}</h4>
         <p style="font-size:1.1rem; margin-bottom:5px;"><b>規劃依據：</b> {route_desc}</p>
         <p style="font-size:1.05rem; color:#555; margin-bottom:0px;">實時指標 ➔ 溫度：{temp}°C | 紫外線：{uv}</p>
     </div>
@@ -469,7 +469,7 @@ elif st.session_state.current_page == "route":
         """, unsafe_allow_html=True)
 
     amap_url = f"https://uri.amap.com/navigation?from={lon},{lat},我的位置&to={path_json[-1][1]},{path_json[-1][0]},{end_label}&mode=walk&coordinate=wgs84&callnative=1"
-    st.link_button("📱 喚醒高德地圖 App 開始語音導航", amap_url, use_container_width=True, type="primary")
+    st.link_button("📱 喚醒手機地圖 App 開始語音導航", amap_url, use_container_width=True, type="primary")
 
 # ==================== 功能二：無障礙休憩點篩選 ====================
 elif st.session_state.current_page == "resting":
@@ -562,21 +562,18 @@ elif st.session_state.current_page == "resting":
     """
     st.components.v1.html(leaflet_html_resting, height=350)
     
+    # 🛠️ 核心修改：已完全刪除原先多餘的「下拉選單、喚醒導航及冗餘資訊卡片」！
+    # 家長只需要點擊 Leaflet 地圖上的圖標，即可最直觀地查看休憩亭詳情。
     if filtered_pois:
-        st.write("⛱️ **篩選結果與一鍵高德導航：**")
-        selected_poi_name = st.selectbox("選擇你想去的休憩地標：", [p["name"] for p in filtered_pois])
-        selected_poi = next(p for p in filtered_pois if p["name"] == selected_poi_name)
-        
-        st.markdown(f"""
-        <div class="info-card">
-            <h5 style="color: #2E7D32; margin-bottom: 5px; font-weight:bold;">{selected_poi['name']}</h5>
-            <p style="font-size:1.1rem; margin-bottom:5px;">{selected_poi['desc']}</p>
-            <p style="font-size:1.05rem; color:#555; margin-bottom:0px;">坡度指標: {selected_poi['slope']}</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        amap_rest_url = f"https://uri.amap.com/navigation?from={lon},{lat},我的位置&to={selected_poi['lon']},{selected_poi['lat']},{selected_poi['name']}&mode=walk&coordinate=wgs84&callnative=1"
-        st.link_button(f"📱 喚醒高德導航前往 {selected_poi_name}", amap_rest_url, use_container_width=True, type="primary")
+        st.write("⛱️ **符合條件的無障礙休憩地標列表：**")
+        for poi in filtered_pois:
+            st.markdown(f"""
+            <div class="info-card">
+                <h5 style="color: #2E7D32; margin-bottom: 5px; font-weight:bold; font-size:1.2rem;">{poi['name']}</h5>
+                <p style="font-size:1.05rem; margin-bottom:5px;">{poi['desc']}</p>
+                <p style="font-size:1rem; color:#555; margin-bottom:0px;"><b>坡度限制：</b>{poi['slope']}</p>
+            </div>
+            """, unsafe_allow_html=True)
     else:
         st.warning("⚠️ 沒有完全符合篩選條件的休憩點。請放寬篩選指標。")
 
@@ -588,7 +585,7 @@ elif st.session_state.current_page == "gear":
         st.rerun()
         
     st.subheader("🎒 隨行裝備")
-    st.write("根據當前模擬或實時微氣候環境，自適應提醒您及寶寶以下必備隨行裝備：")
+    st.write("根據當前天氣數據及步道環境，自適應提醒您及寶寶以下出行防護建議：") # 💡「微氣候環境」已完美更換為「天氣數據」！
     
     st.markdown("""
     <div class="card" style="border-left: 8px solid #2E7D32;">
@@ -618,4 +615,4 @@ elif st.session_state.current_page == "gear":
         st.checkbox("🍼 親子常規充足水瓶", value=True)
 
 st.markdown("<br><hr style='margin: 10px 0; border: none; border-top: 1px solid #E0E0E0;'>", unsafe_allow_html=True)
-st.caption("🔒 系統安全防護聲明：絲野仙蹤（Eco-Family）始終將親子安全置於首位。本App規劃之數據僅供決策輔助，戶外出行仍請家長以現場實際路況與安全第一為準。")d
+st.caption("🔒 系統安全防護聲明：絲野仙蹤（Eco-Family）始終將親子安全置於首位。本App規劃之數據僅供決策輔助，戶外出行仍請家長以現場實際路況與安全第一為準。")

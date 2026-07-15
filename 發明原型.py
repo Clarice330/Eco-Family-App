@@ -11,7 +11,7 @@ import requests
 import json
 import time
 import base64
-import io
+import io1
 from PIL import Image # 引入 Pillow 圖像庫，實現真正的離線電腦視覺特徵提取
 
 # ==================== 1. 全域變數安全初始化防護 ====================

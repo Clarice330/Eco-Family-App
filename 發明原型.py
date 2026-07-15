@@ -16,21 +16,19 @@ from PIL import Image # 引入 Pillow 圖像庫，實現真正的離線電腦視
 
 # ==================== 1. 全域變數安全初始化防護 ====================
 if "global_temp" not in st.session_state:
-    st.session_state.global_temp = 26.7
+    st.session_state.global_temp = 22.5
 if "global_uv" not in st.session_state:
-    st.session_state.global_uv = 1.5
+    st.session_state.global_uv = 1.0
 if "global_humidity" not in st.session_state:
-    st.session_state.global_humidity = 95
+    st.session_state.global_humidity = 80
 if "global_rain" not in st.session_state:
     st.session_state.global_rain = False
 if "global_wind" not in st.session_state:
-    st.session_state.global_wind = 12.0
-if "global_weather_mode" not in st.session_state:
-    st.session_state.global_weather_mode = "🟢 實時連線模式"
+    st.session_state.global_wind = 10.0
 if "current_page" not in st.session_state:
     st.session_state.current_page = "home"
 if "preset_location" not in st.session_state:
-    st.session_state.preset_location = "龍環葡韻住宅式博物館"
+    st.session_state.preset_location = "大潭山步行徑"
 if "override_weather" not in st.session_state:
     st.session_state.override_weather = False
 
@@ -127,7 +125,7 @@ st.markdown("""
         cursor: pointer !important;
     }
 
-    /* 4. 🛠️ 響應式單列垂直列表排版（一行一個功能） */
+    /* 4. 🛠️ 單列垂直列表排版（一行一個功能，高度鎖定為 110px） */
     .grid-container {
         display: flex;
         flex-direction: column;
@@ -137,7 +135,7 @@ st.markdown("""
         margin-top: 10px;
     }
 
-    /* 5. 🛠️ 終極同源樣式：高度鎖定為 110px 的橫向單列卡片，100% 絕對視覺對齊（高度、邊框、圓角、內邊距、陰影） */
+    /* 5. 🛠️ 終極同源樣式：高度鎖定為 110px 的橫向單列卡片，100% 絕對視覺對齊 */
     .grid-card {
         background-color: #FFFFFF !important;
         border: 2px solid #E8F5E9 !important; /* 統一邊框大小與顏色 */
@@ -279,17 +277,17 @@ def get_macau_weather(lat, lon):
     except Exception:
         pass
     return {
-        "temp": 26.7, "humidity": 95, "uv": 1.5, "rain": False, "wind": 12.0,
+        "temp": 22.5, "humidity": 80, "uv": 1.0, "rain": False, "wind": 10.0,
         "mode": "🟡 備援模擬模式"
     }
 
-# 更新定位坐標邏輯
-if st.session_state.preset_location == "龍環葡韻住宅式博物館":
-    lat, lon = 22.1539, 113.5594
-elif st.session_state.preset_location == "大潭山郊野公園":
+# 更新當前定位與氣候站點座標
+if st.session_state.preset_location == "大潭山步行徑":
     lat, lon = 22.1581, 113.5623
+elif st.session_state.preset_location == "黑沙水庫步行徑":
+    lat, lon = 22.1245, 113.5694
 else:
-    lat, lon = 22.1221, 113.5658
+    lat, lon = 22.1158, 113.5645
 
 # ==================== 5. 手機版 App 頂部智慧標題欄與天氣狀態欄 ====================
 st.markdown("<h1>🍀 絲野仙蹤</h1>", unsafe_allow_html=True)
@@ -340,8 +338,8 @@ st.markdown(f"""
 with st.expander("⚙️ 調整出行定位與環境模擬..."):
     location_choice = st.selectbox(
         "📍 模擬當前 GPS 定位:",
-        ["龍環葡韻住宅式博物館", "大潭山郊野公園", "路環石排灣郊野公園"],
-        index=["龍環葡韻住宅式博物館", "大潭山郊野公園", "路環石排灣郊野公園"].index(st.session_state.preset_location)
+        ["大潭山步行徑", "黑沙水庫步行徑", "路環步行徑"],
+        index=["大潭山步行徑", "黑沙水庫步行徑", "路環步行徑"].index(st.session_state.preset_location)
     )
     if location_choice != st.session_state.preset_location:
         st.session_state.preset_location = location_choice
@@ -370,7 +368,7 @@ with st.expander("⚙️ 調整出行定位與環境模擬..."):
 
 st.markdown("<hr style='margin: 15px 0; border: none; border-top: 1px solid #E0E0E0;'>", unsafe_allow_html=True)
 
-# ==================== 6. 頁面路由：首頁大卡片按鈕 (1行1功能，高度 110px，純 HTML 100% 絕對對齊) ====================
+# ==================== 6. 頁面路由：首頁大卡片按鈕 (1行1功能，高度 110px) ====================
 if st.session_state.current_page == "home":
     st.markdown("<h3 style='margin-bottom:12px; font-size:1.35rem;'>📱 親子出行隨行工具：</h3>", unsafe_allow_html=True)
     
@@ -391,7 +389,7 @@ if st.session_state.current_page == "home":
     </div>
     """, unsafe_allow_html=True)
 
-# ==================== 功能一：智慧規劃路線 (精準坡度、遮陽樹陰、母嬰設施綜合算法推薦) ====================
+# ==================== 功能一：智慧規劃路線 (先選景點，再天氣自適應打分推薦景點子路徑) ====================
 elif st.session_state.current_page == "route":
     if st.button("⬅️ 返回主選單", type="secondary"):
         st.query_params.clear() # 清空查詢參數，返回主畫面
@@ -399,115 +397,245 @@ elif st.session_state.current_page == "route":
         st.rerun()
         
     st.subheader("🗺️ 智慧規劃路線")
-    st.write("系統根據天氣指標、坡道模型、林蔭遮蔭率及母嬰設施進行動態多維度推薦評估：")
     
-    # 建立 3 個精準的親子路線物理與設施模型
-    routes_db = [
-        {
-            "id": "A",
-            "name": "🌲 大潭山林蔭無障礙步道",
-            "slope_model": "坡度最大約 2.8% (中度平緩，升降機直達)",
-            "shade_model": "🌳 遮陽亭與密林覆蓋率達 85% (高遮蔭)",
-            "infant_model": "🍼 配備 (設有恆溫哺乳室與無障礙升降機)",
-            "coords": [
-                [22.1539, 113.5594], 
-                [22.1555, 113.5605], 
-                [22.1572, 113.5621], 
-                [22.1581, 113.5623], 
-                [22.1585, 113.5630]
-            ],
-            "center": [22.1562, 113.5612],
-            "base_label": "大潭山避暑景觀亭",
-            "desc": "由博物館直通大潭山頂，沿途皆為特製平緩防滑道，避暑首選。"
-        },
-        {
-            "id": "B",
-            "name": "🏰 龍環葡韻湖畔親水漫步徑",
-            "slope_model": "坡度僅 0.5% (極度平坦，推車最省力)",
-            "shade_model": "🌳 遮陽亭與樹蔭覆蓋率約 40% (低遮蔭)",
-            "infant_model": "🍼 配備 (別墅景區展館內設有育嬰室)",
-            "coords": [
-                [22.1530, 113.5570], 
-                [22.1535, 113.5585], 
-                [22.1539, 113.5594]
-            ],
-            "center": [22.1534, 113.5582],
-            "base_label": "龍環葡韻親水長廊",
-            "desc": "沿親水湖畔平地漫步，景色極佳，全平緩路面，推嬰兒車最輕鬆舒適。"
-        },
-        {
-            "id": "C",
-            "name": "🐼 石排灣公園大熊貓科普徑",
-            "slope_model": "坡度約 1.5% (全平防滑橡膠路面，極好推)",
-            "shade_model": "🌳 全程林蔭與科普有蓋雨廊覆蓋 75% (高防雨)",
-            "infant_model": "🍼 配備 (大熊貓館內備有五星級哺乳室)",
-            "coords": [
-                [22.1215, 113.5650], 
-                [22.1221, 113.5658], 
-                [22.1235, 113.5668]
-            ],
-            "center": [22.1225, 113.5659],
-            "base_label": "藥用植物園觸摸區",
-            "desc": "圍繞大熊貓館的有蓋平整步道，防雨遮陽設施完善。"
-        }
-    ]
+    # 步驟一：選擇要去的三個景點之一
+    chosen_place = st.selectbox(
+        "🗺️ 請選擇您想前往的出行景點：",
+        ["大潭山步行徑", "黑沙水庫步行徑", "路環步行徑"],
+        index=["大潭山步行徑", "黑沙水庫步行徑", "路環步行徑"].index(st.session_state.preset_location)
+    )
     
-    # 🧠 智慧自適應打分演算法（已加入坡度舒適度加權，保證龍環葡韻在舒適天氣下勝出！）
+    if chosen_place != st.session_state.preset_location:
+        st.session_state.preset_location = chosen_place
+        st.rerun()
+        
+    st.write(f"系統正針對 **{chosen_place}**，根據當前天氣動態評估旗下所有子路線，為您推薦最優路徑：")
+    
+    # 步驟二：為每個景點各自配備三條物理特徵完全不同（對應熱、雨、舒爽天氣）的真實子路線
+    routes_db = []
+    
+    if chosen_place == "大潭山步行徑":
+        routes_db = [
+            {
+                "id": "A1",
+                "name": "🌲 大潭山密林避暑無障礙徑",
+                "slope_model": "坡度最大約 2.0% (平緩，升降機直達)",
+                "shade_model": "🌳 遮陽樹林與亭蓬覆蓋率達 85% (高遮蔭)",
+                "infant_model": "🍼 配備 (設有恆溫哺乳室與無障礙升降機)",
+                "coords": [
+                    [22.1539, 113.5594], 
+                    [22.1555, 113.5605], 
+                    [22.1572, 113.5621], 
+                    [22.1581, 113.5623], 
+                    [22.1585, 113.5630]
+                ],
+                "center": [22.1562, 113.5612],
+                "base_label": "大潭山避暑景觀亭",
+                "desc": "沿途樟樹繁茂，高遮蔭能完美抵禦高溫暴曬，高溫高UV天氣最推薦。",
+                "type": "sunny" # 暴曬防暑推薦
+            },
+            {
+                "id": "A2",
+                "name": "🔭 大潭山山頂風光瞭望徑",
+                "slope_model": "坡度最大約 3.8% (起伏大，需較多家長體力)",
+                "shade_model": "🌳 露天觀景路段覆蓋率僅 35% (低遮蔭)",
+                "infant_model": "🍼 備有 (近滑草場公共無障礙設施)",
+                "coords": [
+                    [22.1581, 113.5623], 
+                    [22.1585, 113.5630], 
+                    [22.1592, 113.5645]
+                ],
+                "center": [22.1586, 113.5635],
+                "base_label": "山頂瞭望台",
+                "desc": "湖畔風光極佳，地勢開闊，適合舒爽、無雨無烈日的好天氣出行。",
+                "type": "comfortable" # 快適觀景推薦
+            },
+            {
+                "id": "A3",
+                "name": "🌧️ 大潭山有蓋科普防雨徑",
+                "slope_model": "坡度最大約 1.8% (特製防滑橡膠路面，極舒適)",
+                "shade_model": "🌳 連續有蓋雨廊與亭蓬覆蓋率達 80% (高防雨)",
+                "infant_model": "🍼 備有 (近行政大樓室內育嬰設施)",
+                "coords": [
+                    [22.1539, 113.5594], 
+                    [22.1548, 113.5600], 
+                    [22.1555, 113.5605]
+                ],
+                "center": [22.1547, 113.5599],
+                "base_label": "科普雨廊展示區",
+                "desc": "擁有連續遮雨廊防護，路面摩擦係數高，在風雨天出行的防雨安全首選。",
+                "type": "rainy" # 下雨防雨推薦
+            }
+        ]
+    elif chosen_place == "黑沙水庫步行徑":
+        routes_db = [
+            {
+                "id": "B1",
+                "name": "🌿 黑沙水庫健康密林避暑徑",
+                "slope_model": "坡度約 2.5% (中度平緩，部分防滑扶手配套)",
+                "shade_model": "🌳 密林與避暑涼亭覆蓋率達 80% (高遮蔭)",
+                "infant_model": "🍼 備有 (近健康徑入口親子無障礙設施)",
+                "coords": [
+                    [22.1245, 113.5694], 
+                    [22.1248, 113.5700], 
+                    [22.1255, 113.5710]
+                ],
+                "center": [22.1249, 113.5701],
+                "base_label": "密林避暑涼亭",
+                "desc": "高大樹木遮天蔽日，防紫外線能力極佳，炎熱暴曬天首選推薦。",
+                "type": "sunny" # 暴曬防暑推薦
+            },
+            {
+                "id": "B2",
+                "name": "🌉 黑沙水庫親水吊橋漫步徑",
+                "slope_model": "坡度約 0.5% (全平緩路段，推車極省力)",
+                "shade_model": "🌳 露天親水吊橋路段覆蓋約 30% (低遮蔭)",
+                "infant_model": "🍼 備有 (大壩底公共親子洗手間)",
+                "coords": [
+                    [22.1245, 113.5694], 
+                    [22.1235, 113.5680], 
+                    [22.1225, 113.5670]
+                ],
+                "center": [22.1235, 113.5681],
+                "base_label": "黑沙吊橋觀景長廊",
+                "desc": "吊橋親水風景極其明媚迷人，路面無起伏，極適合舒適溫和的天氣漫步前進。",
+                "type": "comfortable" # 快適觀景推薦
+            },
+            {
+                "id": "B3",
+                "name": "🌧️ 黑沙水庫有蓋科普雨廊",
+                "slope_model": "坡度約 1.2% (防滑地磚路面，好推無台階)",
+                "shade_model": "🌳 有蓋長廊與防滑雨蓬覆蓋 75% (高防雨)",
+                "infant_model": "🍼 備有 (燒烤區旁親子無障礙盥洗室)",
+                "coords": [
+                    [22.1245, 113.5694], 
+                    [22.1250, 113.5702], 
+                    [22.1255, 113.5710]
+                ],
+                "center": [22.1250, 113.5702],
+                "base_label": "有蓋科普植物展廊",
+                "desc": "擁有連續遮雨頂棚防護，即使遇到突發下雨，也能確保寶寶乾爽安全。",
+                "type": "rainy" # 下雨防雨推薦
+            }
+        ]
+    else: # 路環步行徑
+        routes_db = [
+            {
+                "id": "C1",
+                "name": "🌲 路環密林防光避暑徑",
+                "slope_model": "坡度約 2.2% (路況極佳，全鋪裝橡膠路)",
+                "shade_model": "🌳 林蔭與自然樹冠覆蓋率達 85% (高遮蔭)",
+                "infant_model": "🍼 配備 (大熊貓館內設有母嬰哺乳室)",
+                "coords": [
+                    [22.1158, 113.5645], 
+                    [22.1165, 113.5655], 
+                    [22.1172, 113.5665]
+                ],
+                "center": [22.1165, 113.5655],
+                "base_label": "大熊貓館林蔭路段",
+                "desc": "大片密林遮蔽，高UV和高溫環境下防護完美，空氣極其清新怡人。",
+                "type": "sunny" # 暴曬防暑推薦
+            },
+            {
+                "id": "C2",
+                "name": "🐼 路環平緩石排灣親子徑",
+                "slope_model": "坡度約 0.8% (全平無起伏橡膠道，極省力)",
+                "shade_model": "🌳 蔽蔭樹木覆蓋率約 45% (中低遮蔭)",
+                "infant_model": "🍼 備有 (郊野公園大堂標準育嬰室)",
+                "coords": [
+                    [22.1158, 113.5645], 
+                    [22.1145, 113.5630], 
+                    [22.1130, 113.5615]
+                ],
+                "center": [22.1144, 113.5630],
+                "base_label": "石排灣親自然大道",
+                "desc": "路面好推平整，完全不費力。最推薦在氣溫宜人、微風溫和無雨的舒適天出行。",
+                "type": "comfortable" # 快適觀景推薦
+            },
+            {
+                "id": "C3",
+                "name": "🌧️ 路環有蓋生態防雨長廊",
+                "slope_model": "坡度約 1.5% (特製防滑橡膠路面，推車平穩)",
+                "shade_model": "🌳 連續有蓋雨廊與亭蓬覆蓋率達 80% (高防雨)",
+                "infant_model": "🍼 備有 (近園區管理處無障礙親子盥洗室)",
+                "coords": [
+                    [22.1158, 113.5645], 
+                    [22.1160, 113.5650], 
+                    [22.1165, 113.5655]
+                ],
+                "center": [22.1161, 113.5650],
+                "base_label": "生態長廊雨廊區",
+                "desc": "頂棚防雨設施卓越，防滑性能高，是下雨天出行的防雨安全綠廊。",
+                "type": "rainy" # 下雨防雨推薦
+            }
+        ]
+
+    # 🧠 天氣自適應評估打分演算法（綜合溫度、紫外線、下雨、風速進行動態即時打分）
     evaluated_routes = []
     for r in routes_db:
-        # 根據路線坡度給予基礎省力舒適分
-        if r["id"] == "B":
-            score = 100
-        elif r["id"] == "C":
-            score = 95
-        else:
-            score = 90
-            
+        score = 70  # 基礎分
         reasons = []
         
-        # 1. 紫外線 & 溫度與遮蔭率連動評分
-        if uv >= 5.0 or temp >= 30.0:
-            if "85%" in r["shade_model"]:
-                score += 5
-                reasons.append("🔥 當前酷熱/高UV，本路線高密度樹蔭能阻擋 85% 陽光，極力推薦！")
-            elif "75%" in r["shade_model"]:
-                score += 2
-                reasons.append("🔥 當前天氣炎熱，本路線科普長廊能提供良好避暑屏障。")
-            else:
-                score -= 25
-                reasons.append("⚠️ 當前紫外線偏強，本路線遮蔭不足 (僅40%)，容易曬傷寶寶。")
-                
-        # 2. 下雨狀況連動評分
+        # 基礎舒適特性加分
+        if r["type"] == "comfortable":
+            score += 15
+            reasons.append("♿ 坡度最省力：路面起伏極小，推嬰兒車最為輕鬆舒適。")
+        elif r["type"] == "sunny":
+            score += 10
+            reasons.append("🌳 蔽蔭率好：擁有茂密天然樹冠防護。")
+        elif r["type"] == "rainy":
+            score += 5
+            reasons.append("☂️ 雨棚防護：配備有蓋雨亭與科普避雨設施。")
+            
+        # 🛠️ 演算法規則連動 1：下雨天氣（Rain = True）
         if rain:
-            if "75%" in r["shade_model"]:  # 石排灣科普長廊有連續雨棚
+            if r["type"] == "rainy":
+                score += 50
+                reasons.append("🌧️ 天氣正在下雨：本路線配備「有蓋雨廊防雨防滑配套」，能提供全天候防雨，推薦避雨出行！")
+            elif r["type"] == "sunny":
+                score -= 10
+                reasons.append("⚠️ 天氣正在下雨：密林路面容易濕滑，且缺乏雨亭庇護。")
+            elif r["type"] == "comfortable":
+                score -= 40
+                reasons.append("❌ 天氣正在下雨：本路線為全露天觀景路段，極易淋雨，推推車不宜前行。")
+        
+        # 🛠️ 演算法規則連動 2：酷熱大太陽（Temp >= 30°C 或 UV >= 5.0，且沒下雨）
+        elif temp >= 30.0 or uv >= 5.0:
+            if r["type"] == "sunny":
+                score += 45
+                reasons.append("🔥 天氣酷熱/強UV：本路線蔽蔭率高達 80% 以上，能有效遮光防暑，防止寶寶曬傷！")
+            elif r["type"] == "rainy":
+                score += 15
+                reasons.append("☀️ 紫外線偏強：有蓋長廊能發揮一定物理遮光作用。")
+            elif r["type"] == "comfortable":
+                score -= 30
+                reasons.append("⚠️ 當前氣溫炎熱：露天親水觀景段無遮蔽防護，容易中暑曬傷，不宜暴曬出行。")
+                
+        # 🛠️ 演算法規則連動 3：大風天氣（Wind >= 20 km/h）
+        if wind >= 20.0:
+            if r["type"] == "comfortable":
+                score -= 25
+                reasons.append("💨 當前風速過大：露天開闊觀景段風阻極大，且寶寶容易著涼吹風。")
+            elif r["type"] == "rainy":
+                score += 15
+                reasons.append("💨 風力較大：科普有蓋雨廊與防風避風性能較好。")
+                
+        # 🛠️ 演算法規則連動 4：舒適快適好天氣（無雨、微風、適中溫度與低UV）
+        if not rain and temp < 28.0 and uv < 4.0 and wind < 15.0:
+            if r["type"] == "comfortable":
+                score += 40
+                reasons.append("✨ 天氣快適宜人：當前天氣極佳、微風無雨！強烈推薦走全平坦觀景路段，飽覽山海風光！")
+            elif r["type"] == "sunny":
                 score += 10
-                reasons.append("🌧️ 天氣下雨中，本路線有蓋長廊覆蓋率高，提供五星級防雨護航。")
-            elif "85%" in r["shade_model"]:  # 大潭山部分路段是密林，有部分遮雨效果
-                score += 0
-                reasons.append("🌧️ 天氣下雨中，本步道有茂密樟樹林部分擋雨，但建議加裝雨罩。")
-            else:
-                score -= 35
-                reasons.append("❌ 天氣下雨中，本路線為全露天親水步道，推嬰兒車極不方便！")
-                
-        # 3. 風速與坡道/開闊度連動評分
-        if wind >= 25.0:
-            if "2.8%" in r["slope_model"]:  # 山區路段風大，推車上坡逆風
-                score -= 15
-                reasons.append("💨 當前風速過大，大潭山區逆風推車會增加家長體力負擔。")
-            elif "0.5%" in r["slope_model"]: # 湖畔風口
-                score -= 20
-                reasons.append("💨 當前風速偏強，湖畔開闊地帶風力強勁，推車易受強風侵襲。")
-            else:
-                score += 5
-                reasons.append("💨 當前風力大，本步道地勢低且有山體阻擋，防風效果佳。")
-                
+                reasons.append("✨ 天氣快適宜人：涼爽舒適，適合密林森呼吸。")
+
         evaluated_routes.append({
             "data": r,
             "score": max(0, min(100, score)),
             "reasons": reasons
         })
         
-    # 依演算法評分排序，最優推薦放在首位！
+    # 🌟 核心修正：按照打分高低降序排序，此時 index=0 的路線永遠是「最適合當前天氣的最優子路線」！
     evaluated_routes = sorted(evaluated_routes, key=lambda x: x["score"], reverse=True)
     best_route = evaluated_routes[0]
     
@@ -520,12 +648,20 @@ elif st.session_state.current_page == "route":
     </div>
     """, unsafe_allow_html=True)
     
-    # 路線選擇與切換模型
+    # 🌟 核心修正：建立路線下拉式選單，並且讓預設值（index=0）始終與天氣篩選出的最優子路線同步連動！
+    # 當天氣滑桿一改變，下拉選單會立刻自動對齊並選中新的最優路線，下面的地圖和模型就會即時切換！
     st.markdown("### 🗺️ 路線規劃地圖與物理模型")
-    selected_name = st.selectbox("切換並查看其他路線的模型剖析：", [r["data"]["name"] for r in evaluated_routes])
+    selected_name = st.selectbox(
+        "🗺️ 查看本景點下之其他備選路線剖析：", 
+        [r["data"]["name"] for r in evaluated_routes],
+        index=0 # 預設自動選中 index 0 (最優推薦)，完美解決點擊不連動問題
+    )
+    
+    # 取得當前選中的路線數據
     current_route_eval = next(r for r in evaluated_routes if r["data"]["name"] == selected_name)
     current_route = current_route_eval["data"]
     
+    # 展示步道的三大物理模型細節
     col_model1, col_model2 = st.columns(2)
     with col_model1:
         st.markdown(f"""
@@ -550,7 +686,7 @@ elif st.session_state.current_page == "route":
         </div>
         """, unsafe_allow_html=True)
         
-    # Leaflet 地圖展示
+    # Leaflet 地圖展示 (綁定 current_route 的座標與中點)
     st.write("🛰️ **手機實時街區地圖（支援手勢觸控）：**")
     leaflet_html_route = f"""
     <!DOCTYPE html>
@@ -594,7 +730,7 @@ elif st.session_state.current_page == "route":
     amap_url = f"https://uri.amap.com/navigation?from={lon},{lat},我的位置&to={dest_lon},{dest_lat},{current_route['base_label']}&mode=walk&coordinate=wgs84&callnative=1"
     st.link_button("📱 開啟地圖導航並同步語音引導", amap_url, use_container_width=True, type="primary")
 
-# ==================== 功能三：隨行裝備 (推車優化配件全部刪除，100% 根據四項天氣指標動態自適應清單) ====================
+# ==================== 功能三：隨行裝備 (100% 根據四項天氣指標動態自適應清單) ====================
 elif st.session_state.current_page == "gear":
     if st.button("⬅️ 返回主選單", type="secondary"):
         st.query_params.clear() # 清空查詢參數，返回主畫面
@@ -602,7 +738,7 @@ elif st.session_state.current_page == "gear":
         st.rerun()
         
     st.subheader("🎒 隨行裝備")
-    # 💡 依照要求，精確修改說明文案：
+    # 💡 依照指令要求，精確修改說明文案，不增加任何多餘文字：
     st.write("系統根據當前的溫度、紫外線、是否下雨、以及風速數據，自動為您與寶寶生成客製化隨行裝備清單：")
     
     st.markdown("""
@@ -630,7 +766,7 @@ elif st.session_state.current_page == "gear":
         st.checkbox("🌬️ **夾式推車靜音風扇** *(氣溫過高！夾在推車側邊輔助降溫)*", value=True)
         st.checkbox("🥤 **補充電解質親子涼水壺** *(防寶寶脫水長疹！)*", value=True)
     elif temp < 18.0:
-        st.checkbox("🧥 **寶寶防寒加厚斗篷與z小被子** *(天氣偏涼，保暖至上！)*", value=True)
+        st.checkbox("🧥 **寶寶防寒加厚斗篷與小被子** *(天氣偏涼，保暖至上！)*", value=True)
         st.checkbox("🍼 **保溫熱水瓶（維持泡奶適溫）**", value=True)
     else:
         st.checkbox("🍼 親子通用常規飲用水瓶", value=True)

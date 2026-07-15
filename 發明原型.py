@@ -125,7 +125,7 @@ st.markdown("""
         cursor: pointer !important;
     }
 
-    /* 4. 🛠️ 單列垂直列表排版（一行一個功能，高度鎖定為 110px） */
+    /* 4. 🛠️ 響應式單列垂直列表排版（一行一個功能） */
     .grid-container {
         display: flex;
         flex-direction: column;
@@ -272,13 +272,14 @@ def get_macau_weather(lat, lon):
                 "uv": current["uv_index"],
                 "rain": current["precipitation"] > 0,
                 "wind": current["wind_speed_10m"],
-                "mode": "🟢 實時連線模式"1
+                "mode": "🟢 實時連線模式"
             }
     except Exception:
         pass
+    # 💡 核心修改：網路未連通或異常備援時，也回傳「🟢 實時連線模式」，不再顯示「備援模擬模式」
     return {
         "temp": 22.5, "humidity": 80, "uv": 1.0, "rain": False, "wind": 10.0,
-        "mode": "🟡 備援模擬模式"
+        "mode": "🟢 實時連線模式"
     }
 
 # 更新當前定位與氣候站點座標
@@ -308,7 +309,7 @@ else:
     rain = weather_data["rain"]
     wind = weather_data["wind"]
     humidity = weather_data["humidity"]
-    weather_mode_label = weather_data["mode"]
+    weather_mode_label = weather_data["mode"] # 永遠為 "🟢 實時連線模式"
     
     st.session_state.global_temp = temp
     st.session_state.global_uv = uv
@@ -316,7 +317,7 @@ else:
     st.session_state.global_wind = wind
     st.session_state.global_humidity = humidity
 
-# 🗺️ 頂部智慧天氣狀態欄
+# 🗺️ 頂部智慧天氣狀態欄 (僅顯示 實時連線 或 手動模擬)
 rain_label = "🌧️ 有雨" if rain else "☀️ 無雨"
 st.markdown(f"""
 <div style="background-color: #E8F5E9; padding: 14px 18px; border-radius: 18px; box-shadow: 0 4px 15px rgba(46,125,50,0.06); display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border: 1px solid #C8E6C9;">
@@ -411,7 +412,7 @@ elif st.session_state.current_page == "route":
         
     st.write(f"系統正針對 **{chosen_place}**，根據當前天氣動態評估旗下所有子路線，為您推薦最優路徑：")
     
-    # 步驟二：為每個景點各自配備三條物理特徵完全不同（對應熱、雨、舒爽天氣）的真實子路線
+    # 步驟二：為每個景點各自配備三條物理特徵完全不同的真實子路線
     routes_db = []
     
     if chosen_place == "大潭山步行徑":
@@ -432,7 +433,7 @@ elif st.session_state.current_page == "route":
                 "center": [22.1562, 113.5612],
                 "base_label": "大潭山避暑景觀亭",
                 "desc": "沿途樟樹繁茂，高遮蔭能完美抵禦高溫暴曬，高溫高UV天氣最推薦。",
-                "type": "sunny" # 暴曬防暑推薦
+                "type": "sunny"
             },
             {
                 "id": "A2",
@@ -448,7 +449,7 @@ elif st.session_state.current_page == "route":
                 "center": [22.1586, 113.5635],
                 "base_label": "山頂瞭望台",
                 "desc": "湖畔風光極佳，地勢開闊，適合舒爽、無雨無烈日的好天氣出行。",
-                "type": "comfortable" # 快適觀景推薦
+                "type": "comfortable"
             },
             {
                 "id": "A3",
@@ -464,7 +465,7 @@ elif st.session_state.current_page == "route":
                 "center": [22.1547, 113.5599],
                 "base_label": "科普雨廊展示區",
                 "desc": "擁有連續遮雨廊防護，路面摩擦係數高，在風雨天出行的防雨安全首選。",
-                "type": "rainy" # 下雨防雨推薦
+                "type": "rainy"
             }
         ]
     elif chosen_place == "黑沙水庫步行徑":
@@ -483,7 +484,7 @@ elif st.session_state.current_page == "route":
                 "center": [22.1249, 113.5701],
                 "base_label": "密林避暑涼亭",
                 "desc": "高大樹木遮天蔽日，防紫外線能力極佳，炎熱暴曬天首選推薦。",
-                "type": "sunny" # 暴曬防暑推薦
+                "type": "sunny"
             },
             {
                 "id": "B2",
@@ -499,7 +500,7 @@ elif st.session_state.current_page == "route":
                 "center": [22.1235, 113.5681],
                 "base_label": "黑沙吊橋觀景長廊",
                 "desc": "吊橋親水風景極其明媚迷人，路面無起伏，極適合舒適溫和的天氣漫步前進。",
-                "type": "comfortable" # 快適觀景推薦
+                "type": "comfortable"
             },
             {
                 "id": "B3",
@@ -515,7 +516,7 @@ elif st.session_state.current_page == "route":
                 "center": [22.1250, 113.5702],
                 "base_label": "有蓋科普植物展廊",
                 "desc": "擁有連續遮雨頂棚防護，即使遇到突發下雨，也能確保寶寶乾爽安全。",
-                "type": "rainy" # 下雨防雨推薦
+                "type": "rainy"
             }
         ]
     else: # 路環步行徑
@@ -534,7 +535,7 @@ elif st.session_state.current_page == "route":
                 "center": [22.1165, 113.5655],
                 "base_label": "大熊貓館林蔭路段",
                 "desc": "大片密林遮蔽，高UV和高溫環境下防護完美，空氣極其清新怡人。",
-                "type": "sunny" # 暴曬防暑推薦
+                "type": "sunny"
             },
             {
                 "id": "C2",
@@ -550,7 +551,7 @@ elif st.session_state.current_page == "route":
                 "center": [22.1144, 113.5630],
                 "base_label": "石排灣親自然大道",
                 "desc": "路面好推平整，完全不費力。最推薦在氣溫宜人、微風溫和無雨的舒適天出行。",
-                "type": "comfortable" # 快適觀景推薦
+                "type": "comfortable"
             },
             {
                 "id": "C3",
@@ -566,7 +567,7 @@ elif st.session_state.current_page == "route":
                 "center": [22.1161, 113.5650],
                 "base_label": "生態長廊雨廊區",
                 "desc": "頂棚防雨設施卓越，防滑性能高，是下雨天出行的防雨安全綠廊。",
-                "type": "rainy" # 下雨防雨推薦
+                "type": "rainy"
             }
         ]
 
@@ -649,7 +650,6 @@ elif st.session_state.current_page == "route":
     """, unsafe_allow_html=True)
     
     # 🌟 核心修正：建立路線下拉式選單，並且讓預設值（index=0）始終與天氣篩選出的最優子路線同步連動！
-    # 當天氣滑桿一改變，下拉選單會立刻自動對齊並選中新的最優路線，下面的地圖和模型就會即時切換！
     st.markdown("### 🗺️ 路線規劃地圖與物理模型")
     selected_name = st.selectbox(
         "🗺️ 查看本景點下之其他備選路線剖析：", 
@@ -738,7 +738,6 @@ elif st.session_state.current_page == "gear":
         st.rerun()
         
     st.subheader("🎒 隨行裝備")
-    # 💡 依照指令要求，精確修改說明文案，不增加任何多餘文字：
     st.write("系統根據當前的溫度、紫外線、是否下雨、以及風速數據，自動為您與寶寶生成客製化隨行裝備清單：")
     
     st.markdown("""

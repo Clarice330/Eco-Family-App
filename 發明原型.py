@@ -630,7 +630,7 @@ elif st.session_state.current_page == "gear":
         st.checkbox("🌬️ **夾式推車靜音風扇** *(氣溫過高！夾在推車側邊輔助降溫)*", value=True)
         st.checkbox("🥤 **補充電解質親子涼水壺** *(防寶寶脫水長疹！)*", value=True)
     elif temp < 18.0:
-        st.checkbox("🧥 **寶寶防寒加厚斗篷與小被子** *(天氣偏涼，保暖至上！)*", value=True)
+        st.checkbox("🧥 **寶寶防寒加厚斗篷與z小被子** *(天氣偏涼，保暖至上！)*", value=True)
         st.checkbox("🍼 **保溫熱水瓶（維持泡奶適溫）**", value=True)
     else:
         st.checkbox("🍼 親子通用常規飲用水瓶", value=True)

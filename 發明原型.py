@@ -220,11 +220,12 @@ st.markdown("""
         border-left: 8px solid #FBC02D;
     }
     .info-card {
-        background-color: #E8F5E9;
-        padding: 20px;
-        border-radius: 18px;
-        margin-bottom: 15px;
-        border-left: 6px solid #4CAF50;
+        background-color: #FFFFFF;
+        padding: 22px;
+        border-radius: 22px;
+        margin-bottom: 16px;
+        border: 2px solid #E8F5E9;
+        box-shadow: 0 6px 18px rgba(30, 70, 32, 0.02);
     }
     .step-card {
         background-color: #FFFFFF;
@@ -233,6 +234,31 @@ st.markdown("""
         border-left: 5px solid #81C784;
         margin-bottom: 12px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.015);
+    }
+
+    /* 🛠️ 核心重塑：卡片內部地圖導航按鈕樣式 (完美的觸摸回饋與綠色主題) */
+    .nav-button-inside {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background-color: #E8F5E9 !important;
+        color: #1E4620 !important;
+        border: 1.5px solid #C8E6C9 !important;
+        padding: 12px 20px !important;
+        border-radius: 14px !important;
+        font-weight: 700 !important;
+        font-size: 1.1rem !important;
+        text-decoration: none !important;
+        box-shadow: 0 4px 10px rgba(30, 70, 32, 0.03) !important;
+        transition: all 0.2s ease-in-out !important;
+        margin-top: 10px !important;
+        cursor: pointer !important;
+    }
+    .nav-button-inside:hover, .nav-button-inside:active {
+        background-color: #2E7D32 !important;
+        color: #FFFFFF !important;
+        border-color: #2E7D32 !important;
+        box-shadow: 0 6px 15px rgba(46, 125, 50, 0.2) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -471,7 +497,7 @@ elif st.session_state.current_page == "route":
     amap_url = f"https://uri.amap.com/navigation?from={lon},{lat},我的位置&to={path_json[-1][1]},{path_json[-1][0]},{end_label}&mode=walk&coordinate=wgs84&callnative=1"
     st.link_button("📱 喚醒手機地圖 App 開始語音導航", amap_url, use_container_width=True, type="primary")
 
-# ==================== 功能二：無障礙休憩點篩選 ====================
+# ==================== 功能二：無障礙休憩點篩選 (已整合卡片直觀導航按鈕) ====================
 elif st.session_state.current_page == "resting":
     if st.button("⬅️ 返回主選單", type="secondary"):
         st.query_params.clear() # 清空查詢參數，返回主畫面
@@ -537,7 +563,7 @@ elif st.session_state.current_page == "resting":
     <body>
         <div id="map"></div>
         <script>
-            var map = L.map('map',{{ zoomControl: false, tap: true }}).setView([{lat}, {lon}], 14);
+            var map = L.map('map',{{ zoomControl: false, tap: false }}).setView([{lat}, {lon}], 14);
             L.tileLayer('https://{{s}}.basemaps.cartocdn.com/rastertiles/voyager/{{z}}/{{x}}/{{y}}{{r}}.png').addTo(map);
 
             var userIcon = L.divIcon({{
@@ -562,16 +588,19 @@ elif st.session_state.current_page == "resting":
     """
     st.components.v1.html(leaflet_html_resting, height=350)
     
-    # 🛠️ 核心修改：已完全刪除原先多餘的「下拉選單、喚醒導航及冗餘資訊卡片」！
-    # 家長只需要點擊 Leaflet 地圖上的圖標，即可最直觀地查看休憩亭詳情。
+    # 🛠️ 終極修補：為避免下拉選單造成的冗餘，直接將地圖導航按鈕「塞入每一個景點卡片中」！
+    # 點擊即可拉起地圖 App 導航。兼顧美觀與極佳的實用性！
     if filtered_pois:
         st.write("⛱️ **符合條件的無障礙休憩地標列表：**")
         for poi in filtered_pois:
+            # 建立每個景點專屬的去高德/無高德字眼的通用手機地圖 App 喚醒連結
+            rest_nav_url = f"https://uri.amap.com/navigation?from={lon},{lat},我的位置&to={poi['lon']},{poi['lat']},{poi['name']}&mode=walk&coordinate=wgs84&callnative=1"
             st.markdown(f"""
             <div class="info-card">
-                <h5 style="color: #2E7D32; margin-bottom: 5px; font-weight:bold; font-size:1.2rem;">{poi['name']}</h5>
-                <p style="font-size:1.05rem; margin-bottom:5px;">{poi['desc']}</p>
-                <p style="font-size:1rem; color:#555; margin-bottom:0px;"><b>坡度限制：</b>{poi['slope']}</p>
+                <h5 style="color: #1E4620; margin-bottom: 5px; font-weight:bold; font-size:1.25rem;">{poi['name']}</h5>
+                <p style="font-size:1.1rem; margin-bottom:5px; color:#333333;">{poi['desc']}</p>
+                <p style="font-size:1rem; color:#666; margin-bottom:12px;"><b>坡度限制：</b>{poi['slope']}</p>
+                <a href="{rest_nav_url}" target="_blank" class="nav-button-inside">📱 開啟地圖導航</a>
             </div>
             """, unsafe_allow_html=True)
     else:
@@ -605,7 +634,7 @@ elif st.session_state.current_page == "gear":
     else:
         st.checkbox("🦟 溫和防蚊貼片 *(備用)*", value=False)
         
-    if temp >= 30.0:1
+    if temp >= 30.0:
         st.checkbox("🌬️ **夾式推車靜音小風扇** *(氣溫過高！強烈建議夾在推車上吹拂防中暑)*", value=True)
         st.checkbox("🥤 **補充電解質幼兒水壺**", value=True)
     elif temp < 18.0:

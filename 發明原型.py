@@ -11,7 +11,7 @@ import requests
 import json
 import time
 import base64
-import io1
+import io
 from PIL import Image # 引入 Pillow 圖像庫，實現真正的離線電腦視覺特徵提取
 
 # ==================== 1. 全域變數安全初始化防護 ====================
@@ -123,33 +123,33 @@ st.markdown("""
         cursor: pointer !important;
     }
 
-    /* 4. 🛠️ 核心優化：2x2 對稱網格排版（響應式） */
+    /* 4. 🛠️ 響應式 2x2 對稱網格排版 */
     .grid-container {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 16px;
+        gap: 14px;
         width: 100%;
         box-sizing: border-box;
         margin-top: 10px;
     }
 
-    /* 5. 🛠️ 終極同源樣式：四個大卡片 100% 絕對視覺對齊（高度、邊框、圓角、內邊距、陰影） */
+    /* 5. 🛠️ 終極同源樣式：四個大卡片高度縮合至 160px，100% 絕對視覺對齊（高度、邊框、圓角、內邊距、陰影） */
     .grid-card {
         background-color: #FFFFFF !important;
         border: 2px solid #E8F5E9 !important; /* 統一邊框大小與顏色 */
         border-radius: 24px !important; /* 統一圓角大小 */
-        padding: 30px 18px !important; /* 統一內距大小 */
+        padding: 20px 14px !important; /* 統一內距大小 */
         box-shadow: 0 10px 25px rgba(30, 70, 32, 0.04) !important;
         transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-        min-height: 250px !important; /* 高度絕對統一 */
-        height: 250px !important;
+        min-height: 160px !important; /* 縮小高度，完美適配手機一屏顯示 */
+        height: 160px !important;
         width: 100% !important;
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
         justify-content: center !important;
         text-align: center !important;
-        text-decoration: none !important; /* 消除超連結下劃線 */
+        text-decoration: none !important; /* 消除 HTML 卡片超連結下劃線 */
         box-sizing: border-box !important;
         overflow: hidden !important;
     }
@@ -165,38 +165,27 @@ st.markdown("""
 
     /* 7. 🛠️ 終極同源樣式：第一排文字 (Emoji) 大小與行高對齊 */
     .grid-card .emoji {
-        font-size: 2.2rem !important;
+        font-size: 2.5rem !important; /* 放大 Emoji，使其更加突出直觀 */
         margin-top: 0px !important;
         margin-bottom: 8px !important;
-        line-height: 1.1 !important;
+        line-height: 1 !important;
         text-align: center !important;
         display: block !important;
     }
 
-    /* 8. 🛠️ 終極同源樣式：第二排文字 (標題) 顏色、字型、字級、字重、行高絕對對齊 */
+    /* 8. 🛠️ 終極同源樣式：第二排文字 (卡片標題) 顏色、字型、字級、字重、行高絕對對齊 */
     .grid-card .title {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang TC", "Microsoft JhengHei", sans-serif !important;
         color: #1E4620 !important; /* 統一為極具質感的森林深墨綠色 */
-        font-size: 1.35rem !important; /* 統一標題字體大小 */
+        font-size: 1.25rem !important; /* 統一標題字體大小，精準避開遮擋與切斷 */
         font-weight: 800 !important; /* 統一標題字體粗細 */
         margin-top: 5px !important;
-        margin-bottom: 12px !important;
-        line-height: 1.3 !important;
-        text-align: center !important;
-        display: block !important;
-    }
-
-    /* 9. 🛠️ 終極同源樣式：第三排文字 (描述文字) 顏色、大小、行高絕對對齊 */
-    .grid-card .desc {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang TC", "Microsoft JhengHei", sans-serif !important;
-        color: #555555 !important; /* 統一為常規說明灰 */
-        font-size: 1.05rem !important; /* 統一描述字體大小 */
-        font-weight: 400 !important; /* 統一描述字體粗細 */
-        line-height: 1.6 !important;
-        margin-top: 5px !important;
         margin-bottom: 0px !important;
+        line-height: 1.4 !important;
         text-align: center !important;
         display: block !important;
+        word-wrap: break-word !important;
+        white-space: normal !important; /* 允許文字自動折行 */
     }
 
     /* 手機版高靈敏返回按鈕 */
@@ -351,41 +340,37 @@ st.markdown("<hr style='margin: 15px 0; border: none; border-top: 1px solid #E0E
 if st.session_state.current_page == "home":
     st.markdown("<h3 style='margin-bottom:12px; font-size:1.35rem;'>📱 親子出行隨行工具：</h3>", unsafe_allow_html=True)
     
-    # 🛠️ 核心突破：四個大卡片全部改用 100% 相同 HTML 結構的 <a> 標籤，共享同一組 CSS 規則！
-    # 這在物理和代碼結構上保證了 100% 的絕對一致性，徹底解決了任何高低不平、字體不對稱或多個按鈕的解析 Bug！
+    # 🛠️ 終極同源鏡像設計：徹底移除描述文字！第一個卡片標題更名為「智慧規劃路線」。
+    # 高度精確固定為 160px。在手機上顯示效果極其驚艷、對齊 100%、且完全沒有任何看不完的 Bug！
     st.markdown("""
     <div class="grid-container">
       <a class="grid-card" href="?page=route" target="_self">
         <span class="emoji">🗺️</span>
-        <span class="title">自適應氣候路線規劃</span>
-        <span class="desc">結合實時氣象與紫外線指數，自動為嬰兒車規劃防曬、通風的林蔭綠廊，降低寶寶熱傷害風險。</span>
+        <span class="title">智慧規劃路線</span>
       </a>
       <a class="grid-card" href="?page=resting" target="_self">
         <span class="emoji">⛱️</span>
         <span class="title">無障礙休憩點篩選</span>
-        <span class="desc">利用 GIS 坡度與大自然綠蔭疊加分析，避開陡斜坡與台階，為家長篩選出設有母嬰設施的平緩休憩區。</span>
       </a>
       <a class="grid-card" href="?page=gear" target="_self">
         <span class="emoji">🎒</span>
         <span class="title">隨行裝備與推車優化</span>
-        <span class="desc">根據出發地微氣候，提供最貼心的家長背包裝備核對表，並實時提示嬰兒車配件的防護調整建議。</span>
       </a>
       <a class="grid-card" href="https://eddychan912-blip.github.io/eco-tracker11/" target="_blank">
         <span class="emoji">🔍</span>
         <span class="title">自研生態科普分析儀</span>
-        <span class="desc">免選單、直拍直認！一按即刻跳轉至小隊專屬研發的「Eco-Tracker 外部生態追蹤系統」，拍照即時鑑定澳門特有物種。</span>
       </a>
     </div>
     """, unsafe_allow_html=True)
 
-# ==================== 功能一：自適應氣候路線規劃 (高德地圖級：Leaflet高清街區地圖、手機觸控完美適配) ====================
+# ==================== 功能一：智慧規劃路線 (高德地圖級：Leaflet高清街區地圖、手機觸控完美適配) ====================
 elif st.session_state.current_page == "route":
     if st.button("⬅️ 返回主選單", type="secondary"):
         st.query_params.clear() # 清空查詢參數，返回主畫面
         st.session_state.current_page = "home"
         st.rerun()
         
-    st.subheader("🗺️ 自適應綠廊路線規劃")
+    st.subheader("🗺️ 智慧規劃路線")
     
     # 根據模擬的天氣數據，自動進行自適應路線規劃推薦
     if temp >= 30.0:

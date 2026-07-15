@@ -605,7 +605,7 @@ elif st.session_state.current_page == "gear":
     else:
         st.checkbox("🦟 溫和防蚊貼片 *(備用)*", value=False)
         
-    if temp >= 30.0:
+    if temp >= 30.0:1
         st.checkbox("🌬️ **夾式推車靜音小風扇** *(氣溫過高！強烈建議夾在推車上吹拂防中暑)*", value=True)
         st.checkbox("🥤 **補充電解質幼兒水壺**", value=True)
     elif temp < 18.0:

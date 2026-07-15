@@ -340,7 +340,7 @@ st.markdown("<hr style='margin: 15px 0; border: none; border-top: 1px solid #E0E
 if st.session_state.current_page == "home":
     st.markdown("<h3 style='margin-bottom:12px; font-size:1.35rem;'>📱 親子出行隨行工具：</h3>", unsafe_allow_html=True)
     
-    # 🛠️ 終極同源鏡像設計：徹底移除描述文字！第一個卡片標題更名為「智慧規劃路線」。
+    # 🛠️ 終極同源鏡像設計：徹底移除描述文字！
     # 高度精確固定為 160px。在手機上顯示效果極其驚艷、對齊 100%、且完全沒有任何看不完的 Bug！
     st.markdown("""
     <div class="grid-container">
@@ -354,11 +354,11 @@ if st.session_state.current_page == "home":
       </a>
       <a class="grid-card" href="?page=gear" target="_self">
         <span class="emoji">🎒</span>
-        <span class="title">隨行裝備與推車優化</span>
+        <span class="title">隨行裝備</span>
       </a>
       <a class="grid-card" href="https://eddychan912-blip.github.io/eco-tracker11/" target="_blank">
         <span class="emoji">🔍</span>
-        <span class="title">自研生態科普分析儀</span>
+        <span class="title">生態物種分辨</span>
       </a>
     </div>
     """, unsafe_allow_html=True)
@@ -580,15 +580,15 @@ elif st.session_state.current_page == "resting":
     else:
         st.warning("⚠️ 沒有完全符合篩選條件的休憩點。請放寬篩選指標。")
 
-# ==================== 功能三：隨行裝備與推車優化 ====================
+# ==================== 功能三：隨行裝備 (推車優化配件全部刪除，僅保留清單與大字體) ====================
 elif st.session_state.current_page == "gear":
     if st.button("⬅️ 返回主選單", type="secondary"):
         st.query_params.clear() # 清空查詢參數，返回主畫面
         st.session_state.current_page = "home"
         st.rerun()
         
-    st.subheader("🎒 隨行裝備與推車優化")
-    st.write("根據當前微氣候及步道環境，自適應提醒您及寶寶以下出行防護建議：")
+    st.subheader("🎒 隨行裝備")
+    st.write("根據當前模擬或實時微氣候環境，自適應提醒您及寶寶以下必備隨行裝備：")
     
     st.markdown("""
     <div class="card" style="border-left: 8px solid #2E7D32;">
@@ -617,18 +617,5 @@ elif st.session_state.current_page == "gear":
     else:
         st.checkbox("🍼 親子常規充足水瓶", value=True)
 
-    st.markdown("""
-    <div class="card" style="border-left: 8px solid #4CAF50; margin-top:20px;">
-        <h4 style="margin-top:0px; font-size:1.35rem;">🛒 嬰兒推車配件優化建議</h4>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    if temp >= 30.0:
-        st.info("💡 **配件最優調整：** \n當前氣溫炎熱，請立刻為推車更換 **涼感 3D 透氣網墊**，將防曬罩調為半開，確保寶寶背部與屁股通風。")
-    elif temp < 18.0:
-        st.info("💡 **配件最優調整：** \n氣溫偏涼，請在嬰兒推車外框架上安裝 **透明防風雨罩**，避免冷風直吹寶寶面部。")
-    else:
-        st.success("💡 **配件最優調整：** \n微氣候十分宜人！安裝常用的 **推車防滑掛鉤** 與多功能水杯架，即可愉快出發囉！")
-
 st.markdown("<br><hr style='margin: 10px 0; border: none; border-top: 1px solid #E0E0E0;'>", unsafe_allow_html=True)
-st.caption("🔒 系統安全防護聲明：絲野仙蹤（Eco-Family）始終將親子安全置於首位。本App規劃之數據僅供決策輔助，戶外出行仍請家長以現場實際路況與安全第一為準。")
+st.caption("🔒 系統安全防護聲明：絲野仙蹤（Eco-Family）始終將親子安全置於首位。本App規劃之數據僅供決策輔助，戶外出行仍請家長以現場實際路況與安全第一為準。")1

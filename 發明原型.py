@@ -7,7 +7,7 @@
 
 import streamlit as st
 import pandas as pd
-import requests
+import requests1
 import json
 import time
 import base64

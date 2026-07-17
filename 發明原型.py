@@ -1,4 +1,4 @@
-1# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 🍀 絲野仙蹤 (Eco-Family) - 澳門親子綠色呼吸智慧康旅導航系統
 作者：培正中學 ── 碳捕獲小隊 (葉心悠、文頌恩、黃思語)
@@ -356,55 +356,57 @@ else:
     st.session_state.global_rain = rain
     st.session_state.global_wind = wind
 
-# 頂部智慧定位天氣橫幅
-rain_label = "🌧️ 有雨" if rain else "☀️ 無雨"
-st.markdown(f"""
-<div style="background-color: #E8F5E9; padding: 14px 18px; border-radius: 18px; box-shadow: 0 4px 15px rgba(46,125,50,0.06); display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border: 1px solid #C8E6C9;">
-    <div style="display: flex; align-items: center; gap: 8px;">
-        <span style="font-size: 1.4rem;">📍</span>
-        <div>
-            <span style="font-size: 1.15rem; font-weight: bold; color: #1E4620;">{st.session_state.preset_location}</span>
-            <span style="font-size: 0.8rem; color: #555; display: block;">{weather_mode_label}</span>
+# 🍀 僅在非首頁（使用者點入子功能頁面後）才顯示天氣看板與環境模擬控制台
+if st.session_state.current_page != "home":
+    # 頂部智慧定位天氣橫幅
+    rain_label = "🌧️ 有雨" if rain else "☀️ 無雨"
+    st.markdown(f"""
+    <div style="background-color: #E8F5E9; padding: 14px 18px; border-radius: 18px; box-shadow: 0 4px 15px rgba(46,125,50,0.06); display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border: 1px solid #C8E6C9;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.4rem;">📍</span>
+            <div>
+                <span style="font-size: 1.15rem; font-weight: bold; color: #1E4620;">{st.session_state.preset_location}</span>
+                <span style="font-size: 0.8rem; color: #555; display: block;">{weather_mode_label}</span>
+            </div>
+        </div>
+        <div style="text-align: right;">
+            <span style="font-size: 1.15rem; font-weight: bold; color: #2E7D32;">🌡️ {temp}°C | {rain_label}</span>
+            <span style="font-size: 0.95rem; color: #555; display: block;">☀️ UV {uv} | 🍃 風速 {wind} km/h</span>
         </div>
     </div>
-    <div style="text-align: right;">
-        <span style="font-size: 1.15rem; font-weight: bold; color: #2E7D32;">🌡️ {temp}°C | {rain_label}</span>
-        <span style="font-size: 0.95rem; color: #555; display: block;">☀️ UV {uv} | 🍃 風速 {wind} km/h</span>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-# 模擬環境與數據控制台 (僅保留 溫度, 紫外線, 風速 與 下雨狀態 模擬)
-with st.expander("⚙️ 調整出行定位與環境模擬..."):
-    location_choice = st.selectbox(
-        "📍 模擬當前 GPS 定位:",
-        ["大潭山步行徑", "黑沙水庫步行徑", "路環步行徑"],
-        index=["大潭山步行徑", "黑沙水庫步行徑", "路環步行徑"].index(st.session_state.preset_location)
-    )
-    if location_choice != st.session_state.preset_location:
-        st.session_state.preset_location = location_choice
-        st.rerun()
+    # 模擬環境與數據控制台 (僅保留 溫度, 紫外線, 風速 與 下雨狀態 模擬)
+    with st.expander("⚙️ 調整出行定位與環境模擬..."):
+        location_choice = st.selectbox(
+            "📍 模擬當前 GPS 定位:",
+            ["大潭山步行徑", "黑沙水庫步行徑", "路環步行徑"],
+            index=["大潭山步行徑", "黑沙水庫步行徑", "路環步行徑"].index(st.session_state.preset_location)
+        )
+        if location_choice != st.session_state.preset_location:
+            st.session_state.preset_location = location_choice
+            st.rerun()
+            
+        st.markdown("<hr style='margin: 10px 0; border: none; border-top: 1px dashed #C8E6C9;'>", unsafe_allow_html=True)
         
-    st.markdown("<hr style='margin: 10px 0; border: none; border-top: 1px dashed #C8E6C9;'>", unsafe_allow_html=True)
-    
-    override_active = st.toggle("🌡️ 啟用手動模擬天氣數據", value=st.session_state.override_weather)
-    
-    if override_active != st.session_state.override_weather:
-        st.session_state.override_weather = override_active
-        st.rerun()
+        override_active = st.toggle("🌡️ 啟用手動模擬天氣數據", value=st.session_state.override_weather)
         
-    if override_active:
-        sim_temp = st.slider("🌡️ 模擬溫度 (°C)", min_value=10.0, max_value=42.0, value=float(st.session_state.global_temp), step=0.5)
-        sim_uv = st.slider("☀️ 模擬紫外線 (UV)", min_value=0.0, max_value=11.0, value=float(st.session_state.global_uv), step=0.5)
-        sim_rain = st.checkbox("🌧️ 模擬正在下雨", value=st.session_state.global_rain)
-        sim_wind = st.slider("🍃 模擬風速 (km/h)", min_value=0.0, max_value=60.0, value=float(st.session_state.global_wind), step=1.0)
-        
-        st.session_state.global_temp = sim_temp
-        st.session_state.global_uv = sim_uv
-        st.session_state.global_rain = sim_rain
-        st.session_state.global_wind = sim_wind
-    else:
-        st.success("📱 系統正與澳門天氣數據保持同步。")
+        if override_active != st.session_state.override_weather:
+            st.session_state.override_weather = override_active
+            st.rerun()
+            
+        if override_active:
+            sim_temp = st.slider("🌡️ 模擬溫度 (°C)", min_value=10.0, max_value=42.0, value=float(st.session_state.global_temp), step=0.5)
+            sim_uv = st.slider("☀️ 模擬紫外線 (UV)", min_value=0.0, max_value=11.0, value=float(st.session_state.global_uv), step=0.5)
+            sim_rain = st.checkbox("🌧️ 模擬正在下雨", value=st.session_state.global_rain)
+            sim_wind = st.slider("🍃 模擬風速 (km/h)", min_value=0.0, max_value=60.0, value=float(st.session_state.global_wind), step=1.0)
+            
+            st.session_state.global_temp = sim_temp
+            st.session_state.global_uv = sim_uv
+            st.session_state.global_rain = sim_rain
+            st.session_state.global_wind = sim_wind
+        else:
+            st.success("📱 系統正與澳門天氣數據保持同步。")
 
 st.markdown("<hr style='margin: 15px 0; border: none; border-top: 1px solid #E0E0E0;'>", unsafe_allow_html=True)
 

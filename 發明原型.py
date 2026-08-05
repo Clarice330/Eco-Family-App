@@ -6,7 +6,7 @@
 """
 
 import streamlit as st
-import pandas as pd
+import pandas as pdq
 import requests
 import json
 import time

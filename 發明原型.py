@@ -813,7 +813,7 @@ elif st.session_state.current_page == "audio":
                 g.connect(actx.destination);
                 osc.start();
             }} catch(e) {{}}
-        }}
+        }}ewf
     </script>
     """
     st.components.v1.html(audio_js, height=75)

@@ -10,7 +10,7 @@ import urllib.parse
 import time
 import math
 from datetime import datetime
-1
+
 # ==================== 0. 全域跨 Session 共享記憶體 ====================
 @st.cache_resource
 def get_global_shared_store():
@@ -302,10 +302,7 @@ if st.session_state.current_page == "menu":
 
     # 按鈕 2 (使用 Streamlit 原生 link_button，長度 100% 完全對齊且 100% 順暢開啟 Google Maps)
     google_maps_sharing_url = "https://www.google.com/maps/@22.1987,113.5439,15z"
-    try:
-        st.link_button("📍 親友共享定位雷達", google_maps_sharing_url, use_container_width=True)
-    except AttributeError:
-        st.markdown(f'<a href="{google_maps_sharing_url}" target="_blank" class="unified-card-btn">📍 親友共享定位雷達</a>', unsafe_allow_html=True)
+    st.link_button("📍 親友共享定位雷達", google_maps_sharing_url, use_container_width=True)
 
     # 按鈕 3
     if st.button("🎒 隨行裝備", key="btn_m3", use_container_width=True):
@@ -314,10 +311,7 @@ if st.session_state.current_page == "menu":
 
     # 按鈕 4 (使用 Streamlit 原生 link_button，長度 100% 完全對齊)
     ext_url = "https://eddychan912-blip.github.io/eco-tracker11/"
-    try:
-        st.link_button("🔍 親子生態動植物識別", ext_url, use_container_width=True)
-    except AttributeError:
-        st.markdown(f'<a href="{ext_url}" target="_blank" class="unified-card-btn">🔍 親子生態動植物識別</a>', unsafe_allow_html=True)
+    st.link_button("🔍 親子生態動植物識別", ext_url, use_container_width=True)
 
 
 # ==================== 6. 功能頁面 1：🗺️ 智慧路線規劃 (18條精確條件匹配路線) ====================
@@ -344,7 +338,7 @@ elif st.session_state.current_page == "routes":
             st.session_state.global_pm10 = st.slider("🌫️ 懸浮微粒 (PM10)", 10.0, 200.0, float(st.session_state.global_pm10), key="r_pm10")
             st.session_state.global_rain = st.checkbox("🌧️ 是否模擬降雨", value=st.session_state.global_rain, key="r_rain")
 
-    # 氣象數據顯示 (去除「狀態」二字，加上「是否」)
+    # 氣象數據顯示 (已精確修改：第四卡片顯示「是」或「否」)
     weather_tag_html = '<span class="badge-sim">🛠️ 手動模擬數據中</span>' if st.session_state.override_weather else '<span style="color:#2E7D32; font-size:0.85rem; font-weight:bold;">(📡 澳門實時連線)</span>'
     st.markdown(f"##### ☁️ 澳門當前氣象數據 {weather_tag_html}", unsafe_allow_html=True)
 
@@ -356,8 +350,8 @@ elif st.session_state.current_page == "routes":
     with r3:
         st.markdown(f"""<div class="metric-card"><div class="metric-title">🍃 PM2.5</div><div class="metric-value">{st.session_state.global_pm25:.1f}</div></div>""", unsafe_allow_html=True)
     with r4:
-        rain_text = "🌧️ 降雨" if st.session_state.global_rain else "☀️ 晴朗"
-        st.markdown(f"""<div class="metric-card"><div class="metric-title">🌧️ 是否降雨</div><div class="metric-value" style="font-size:1.1rem; margin-top:2px;">{rain_text}</div></div>""", unsafe_allow_html=True)
+        rain_text = "是" if st.session_state.global_rain else "否"
+        st.markdown(f"""<div class="metric-card"><div class="metric-title">🌧️ 是否降雨</div><div class="metric-value">{rain_text}</div></div>""", unsafe_allow_html=True)
 
     st.write("")
 
@@ -582,7 +576,7 @@ elif st.session_state.current_page == "routes":
     # 依分數重新排序，第 1 名必定隨氣象數據即時翻轉！
     sorted_dest_routes = sorted(dest_routes, key=lambda x: x["dynamic_score"], reverse=True)
 
-    st.markdown(f"#### 🎯 當前氣象 (氣溫 {cur_temp:.1f}°C / UV {cur_uv:.1f} / 天氣：{'🌧️ 下雨' if is_rain else '☀️ 晴朗'}) 推薦路線：")
+    st.markdown(f"#### 🎯 當前氣象 (氣溫 {cur_temp:.1f}°C / UV {cur_uv:.1f} / 是否降雨：{'是' if is_rain else '否'}) 推薦路線：")
 
     for idx, route in enumerate(sorted_dest_routes):
         is_best = (idx == 0)
@@ -643,7 +637,7 @@ elif st.session_state.current_page == "family":
     """, unsafe_allow_html=True)
 
 
-# ==================== 8. 功能頁面 3：🎒 隨行裝備 (懸浮微粒已移除「是否」二字) ====================
+# ==================== 8. 功能頁面 3：🎒 隨行裝備 (已修改第四卡片為顯示「是」與「否」) ====================
 elif st.session_state.current_page == "gear":
     st.markdown('<div class="back-btn">', unsafe_allow_html=True)
     if st.button("← 返回主頁面", key="back_gear"):
@@ -667,7 +661,7 @@ elif st.session_state.current_page == "gear":
             st.session_state.global_pm10 = st.slider("🌫️ 懸浮微粒 (PM10)", 10.0, 200.0, float(st.session_state.global_pm10), key="g_pm10")
             st.session_state.global_rain = st.checkbox("🌧️ 是否模擬降雨", value=st.session_state.global_rain, key="g_rain")
 
-    # 氣象數據顯示 (補上「是否」二字)
+    # 氣象數據顯示 (已精確修改：第四卡片顯示「是」或「否」)
     weather_tag_html = '<span class="badge-sim">🛠️ 手動模擬數據中</span>' if st.session_state.override_weather else '<span style="color:#2E7D32; font-size:0.85rem; font-weight:bold;">(📡 澳門實時連線)</span>'
     st.markdown(f"##### ☁️ 澳門當前氣象數據 {weather_tag_html}", unsafe_allow_html=True)
 
@@ -679,8 +673,8 @@ elif st.session_state.current_page == "gear":
     with r3:
         st.markdown(f"""<div class="metric-card"><div class="metric-title">🍃 PM2.5</div><div class="metric-value">{st.session_state.global_pm25:.1f}</div></div>""", unsafe_allow_html=True)
     with r4:
-        rain_text = "🌧️ 降雨" if st.session_state.global_rain else "☀️ 晴朗"
-        st.markdown(f"""<div class="metric-card"><div class="metric-title">🌧️ 是否降雨</div><div class="metric-value" style="font-size:1.1rem; margin-top:2px;">{rain_text}</div></div>""", unsafe_allow_html=True)
+        rain_text = "是" if st.session_state.global_rain else "否"
+        st.markdown(f"""<div class="metric-card"><div class="metric-title">🌧️ 是否降雨</div><div class="metric-value">{rain_text}</div></div>""", unsafe_allow_html=True)
 
     st.write("")
 
@@ -723,7 +717,7 @@ elif st.session_state.current_page == "gear":
         st.checkbox("🧥 **兒童保暖防風外套 & 小毛毯**", value=True, key="gear_temp_cold1")
         st.checkbox("☕ **熱水保溫壺**", value=True, key="gear_temp_cold2")
 
-    # 5. 😷 PM2.5 / PM10 懸浮微粒動態應對裝備 (已按要求將標題改為「懸浮微粒」，移除「是否」二字)
+    # 5. 😷 PM2.5 / PM10 懸浮微粒動態應對裝備 (標題維持「懸浮微粒」)
     cur_pm25 = st.session_state.global_pm25
     if cur_pm25 >= 15.0:
         st.markdown(f"##### 😷 懸浮微粒：呼吸道護理裝備 (當前 PM2.5 {cur_pm25:.1f})")

@@ -1042,7 +1042,7 @@ elif st.session_state.current_page == "audio":
     st.components.v1.html(audio_js, height=75)
 
 
-# ==================== 10. 功能頁面 5：🚨 全國 SOS 緊急求救專區 (前端即時渲染真 GPS 簡訊卡) ====================
+# ==================== 10. 功能頁面 5：🚨 全國 SOS 緊急求救專區 (一鍵發送 SMS 簡訊) ====================
 elif st.session_state.current_page == "sos":
     st.markdown('<div class="back-btn">', unsafe_allow_html=True)
     if st.button("← 返回主頁面", key="back_sos"):
@@ -1053,11 +1053,11 @@ elif st.session_state.current_page == "sos":
     st.markdown("""
     <div class="card" style="border-left:5px solid #C62828; background-color:#FFEBEE;">
         <h3 style="margin-top:0px; color:#B71C1C;">🚨 全國緊急求救與精準 GPS 定位通報</h3>
-        <p style="font-size:0.9rem; color:#C62828; margin-bottom:0;">如在戶外遇到緊急情況，請保持冷靜。點擊下方專線直撥或複製精準座標通報求救：</p>
+        <p style="font-size:0.9rem; color:#C62828; margin-bottom:0;">如在戶外遇到緊急情況，請保持冷靜。點擊下方專線直撥或<b>點擊按鈕自動發送一鍵 SMS 求救簡訊</b>：</p>
     </div>
     """, unsafe_allow_html=True)
 
-    # 🎯 前端動態即時渲染簡訊卡，並提供隱藏 Form 以更新後端
+    # 🎯 前端動態即時渲染一鍵 SMS 簡訊發送按鈕
     sos_gps_js_template = """
     <div style="text-align:center; padding:10px; background-color:#FFEBEE; border-radius:10px; border:1px solid #FFCDD2; margin-bottom:12px;">
         <div id="sosGpsStatus" style="font-size:0.9rem; color:#C62828; font-weight:bold; margin-bottom:8px;">
@@ -1070,20 +1070,47 @@ elif st.session_state.current_page == "sos":
         </form>
     </div>
 
-    <div style="background-color:#FFFFFF; border-radius:12px; padding:16px; border-left:5px solid #C62828; box-shadow:0 2px 10px rgba(0,0,0,0.04); margin-bottom:16px;">
-        <h4 style="color:#C62828; margin-top:0; font-size:1.05rem;">📍 當前精確 GPS 求救座標簡訊卡</h4>
-        <textarea id="sosTextArea" style="width:100%; height:120px; border-radius:8px; border:1.5px solid #FFCDD2; padding:10px; font-family:monospace; font-size:0.88rem; box-sizing:border-box;">【🚨 SOS 全國緊急求救通報】&#10;求救人暱稱：__USER_NICK__&#10;當前精確 GPS 座標：緯度 __MY_LAT__, 經度 __MY_LON__&#10;地圖位置導航：https://maps.google.com/?q=__MY_LAT__,__MY_LON__&#10;請救援隊儘快聯繫搜救！</textarea>
+    <div style="background-color:#FFFFFF; border-radius:12px; padding:16px; border-left:5px solid #C62828; box-shadow:0 2px 10px rgba(0,0,0,0.04); margin-bottom:16px; text-align:center;">
+        <h4 style="color:#C62828; margin-top:0; font-size:1.05rem;">📲 一鍵發送 SMS 求救簡訊 (自動帶入號碼與座標)</h4>
+        
+        <div style="margin-bottom:12px;">
+            <a id="smsLink" href="sms:110?body=SOS%20%E6%B1%82%E6%95%91" style="text-decoration:none;">
+                <div style="background-color:#C62828; color:white; font-size:1.15rem; font-weight:bold; padding:14px; border-radius:10px; box-shadow:0 4px 10px rgba(198,40,40,0.3);">
+                    💬 點擊自動開啟手機簡訊 App 發送求救簡訊
+                </div>
+            </a>
+        </div>
+
+        <p style="font-size:0.85rem; color:#666; text-align:left; margin-bottom:4px; font-weight:bold;">📋 簡訊預覽內容：</p>
+        <div id="smsPreview" style="background-color:#F5F5F5; border-radius:8px; border:1px solid #E0E0E0; padding:10px; font-family:monospace; font-size:0.85rem; text-align:left; color:#333; word-break:break-all;">
+            【🚨 SOS 全國緊急求救通報】<br>
+            求救人暱稱：__USER_NICK__<br>
+            當前精確 GPS 座標：緯度 __MY_LAT__, 經度 __MY_LON__<br>
+            地圖位置導航：https://maps.google.com/?q=__MY_LAT__,__MY_LON__<br>
+            請救援隊儘快聯繫搜救！
+        </div>
     </div>
 
     <script>
-        function updateSosCard(lat, lon) {
+        function updateSmsButton(lat, lon) {
             var nick = "__USER_NICK__";
-            var text = "【🚨 SOS 全國緊急求救通報】\\n" +
-                       "求救人暱稱：" + nick + "\\n" +
-                       "當前精確 GPS 座標：緯度 " + lat.toFixed(5) + ", 經度 " + lon.toFixed(5) + "\\n" +
-                       "地圖位置導航：https://maps.google.com/?q=" + lat.toFixed(5) + "," + lon.toFixed(5) + "\\n" +
-                       "請救援隊儘快聯繫搜救！";
-            document.getElementById("sosTextArea").value = text;
+            var rawText = "【🚨 SOS 全國緊急求救通報】\\n" +
+                           "求救人暱稱：" + nick + "\\n" +
+                           "當前精確 GPS 座標：緯度 " + lat.toFixed(5) + ", 經度 " + lon.toFixed(5) + "\\n" +
+                           "地圖位置導航：https://maps.google.com/?q=" + lat.toFixed(5) + "," + lon.toFixed(5) + "\\n" +
+                           "請救援隊儘快聯繫搜救！";
+
+            // 針對 iOS / Android 的 sms: 協議編碼格式
+            var encodedText = encodeURIComponent(rawText);
+            var smsUrl = "sms:110?body=" + encodedText;
+            document.getElementById("smsLink").href = smsUrl;
+
+            var htmlPreview = "【🚨 SOS 全國緊急求救通報】<br>" +
+                              "求救人暱稱：" + nick + "<br>" +
+                              "當前精確 GPS 座標：緯度 " + lat.toFixed(5) + ", 經度 " + lon.toFixed(5) + "<br>" +
+                              "地圖位置導航：https://maps.google.com/?q=" + lat.toFixed(5) + "," + lon.toFixed(5) + "<br>" +
+                              "請救援隊儘快聯繫搜救！";
+            document.getElementById("smsPreview").innerHTML = htmlPreview;
         }
 
         if (navigator.geolocation) {
@@ -1094,10 +1121,8 @@ elif st.session_state.current_page == "sos":
                 
                 document.getElementById("sosGpsStatus").innerHTML = "✅ 已鎖定極速 GPS 座標：緯度 " + lat.toFixed(5) + ", 經度 " + lon.toFixed(5) + " (誤差 ±" + accuracy + "米)";
                 
-                // 即時動態替換卡片內的文字
-                updateSosCard(lat, lon);
+                updateSmsButton(lat, lon);
 
-                // 自動同步向後端提交流程
                 var curLat = parseFloat("__MY_LAT__");
                 var curLon = parseFloat("__MY_LON__");
                 if (Math.abs(lat - curLat) > 0.0001 || Math.abs(lon - curLon) > 0.0001) {
@@ -1124,7 +1149,7 @@ elif st.session_state.current_page == "sos":
                                              .replace("__MY_LAT__", f"{cur_lat:.5f}")\
                                              .replace("__MY_LON__", f"{cur_lon:.5f}")
 
-    st.components.v1.html(rendered_sos_html, height=220)
+    st.components.v1.html(rendered_sos_html, height=270)
 
     st.markdown("##### 📞 全國 / 港澳緊急救援直撥專線")
 
@@ -1150,11 +1175,11 @@ elif st.session_state.current_page == "sos":
                 📞 119 消防救援熱線
             </div>
         </a>
-        <a href="tel:999" sfddsgrsgrgtyle="text-decoration:none;">
+        <a href="tel:999" style="text-decoration:none;">
             <div style="background-color:#0277BD; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold; margin-bottom:10px;">
                 📞 999 港澳緊急求救
             </div>
         </a>
         """, unsafe_allow_html=True)
 
-    st.info("💡 提示：點擊上方撥號按鈕或複製上方簡訊發送給搜救隊，能協助救援人員以最快速度定位獲救！")
+    st.info("💡 提示：點擊上方 SMS 簡訊發送按鈕，手機會自動開啟簡訊文字檔，按下發送即可迅速向搜救隊通報您的精確位置！")

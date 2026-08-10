@@ -41,9 +41,29 @@ def calculate_haversine(lat1, lon1, lat2, lon2):
         return f"{round(meters / 1000.0, 2)} 公里"
 
 
-# ==================== 1. 全域 Session State 安全初始化 & 網址參數接收 ====================
+# ==================== 1. 全域 Session State 安全初始化 ====================
+query_params = st.query_params
 
-# 1.1 先設定預設 Session 變數
+if "page" in query_params and query_params["page"]:
+    st.session_state.current_page = query_params["page"]
+
+if "joined" in query_params and query_params["joined"] == "1":
+    st.session_state.joined_room = True
+
+if "room" in query_params and query_params["room"]:
+    st.session_state.room_id = query_params["room"]
+
+if "user" in query_params and query_params["user"]:
+    st.session_state.user_nickname = query_params["user"]
+
+# 讀取真實 GPS 座標
+if "lat" in query_params and "lon" in query_params:
+    try:
+        st.session_state.my_lat = float(query_params["lat"])
+        st.session_state.my_lon = float(query_params["lon"])
+    except ValueError:
+        pass
+
 if "global_temp" not in st.session_state:
     st.session_state.global_temp = 22.5
 if "global_uv" not in st.session_state:
@@ -53,11 +73,11 @@ if "global_rain" not in st.session_state:
 if "global_wind" not in st.session_state:
     st.session_state.global_wind = 10.0
 if "global_pm25" not in st.session_state:
-    st.session_state.global_pm25 = 12.0
+    st.session_state.global_pm25 = 12.0  # PM2.5 微粒 (μg/m³)
 if "global_pm10" not in st.session_state:
-    st.session_state.global_pm10 = 24.0
+    st.session_state.global_pm10 = 24.0  # PM10 懸浮微粒 (μg/m³)
 if "global_aqi" not in st.session_state:
-    st.session_state.global_aqi = 28.0
+    st.session_state.global_aqi = 28.0   # 空氣質量指數 (AQI)
 
 if "override_weather" not in st.session_state:
     st.session_state.override_weather = False
@@ -74,7 +94,7 @@ if "audio_active" not in st.session_state:
 if "selected_insect_freq" not in st.session_state:
     st.session_state.selected_insect_freq = "17.4 kHz - 模擬雄蚊翅聲 (驅避咬人母蚊)"
 
-# 共享定位房間與暱稱
+# 共享定位房間與暱稱 (預設為空字串，未填寫前不自動進入房間)
 if "room_id" not in st.session_state:
     st.session_state.room_id = ""
 if "user_nickname" not in st.session_state:
@@ -85,31 +105,6 @@ if "joined_room" not in st.session_state:
 # 導航頁面狀態
 if "current_page" not in st.session_state:
     st.session_state.current_page = "menu"
-
-
-# 1.2 接收 URL 網址參數並即時覆蓋（確保前端帶回的實時 GPS 優先生效）
-query_params = st.query_params
-
-if "page" in query_params and query_params["page"]:
-    st.session_state.current_page = query_params["page"]
-
-if "joined" in query_params and query_params["joined"] == "1":
-    st.session_state.joined_room = True
-
-if "room" in query_params and query_params["room"]:
-    st.session_state.room_id = query_params["room"]
-
-if "user" in query_params and query_params["user"]:
-    st.session_state.user_nickname = query_params["user"]
-
-# 接收前端 JavaScript 精確傳回的真實 GPS 座標
-if "lat" in query_params and "lon" in query_params:
-    try:
-        st.session_state.my_lat = float(query_params["lat"])
-        st.session_state.my_lon = float(query_params["lon"])
-    except ValueError:
-        pass
-
 
 # 頁面配置
 st.set_page_config(
@@ -763,17 +758,6 @@ elif st.session_state.current_page == "family":
             <div id="gpsStatus" style="font-size:0.9rem; color:#1B5E20; font-weight:bold;">
                 🔴 紅色：我自己 | 🔵 藍色：親友成員 (已進入房間 [__ROOM_KEY__])
             </div>
-            <form id="gpsForm" action="" method="GET" target="_parent" style="margin-top:6px;">
-                <input type="hidden" name="page" value="family">
-                <input type="hidden" name="room" value="__ROOM_KEY__">
-                <input type="hidden" name="user" value="__CURRENT_NICK__">
-                <input type="hidden" name="joined" value="1">
-                <input type="hidden" name="lat" id="form_lat" value="__MY_LAT__">
-                <input type="hidden" name="lon" id="form_lon" value="__MY_LON__">
-                <button type="button" onclick="syncMyGPS()" style="background-color:#1B5E20; color:white; border:none; padding:6px 14px; border-radius:6px; font-weight:bold; cursor:pointer;">
-                    📡 廣播/同步我的真實 GPS 給所有親友
-                </button>
-            </form>
         </div>
         <div id="radarMap" style="width: 100%; height: 350px; border-radius: 12px; border: 1.5px solid #C8E6C9;"></div>
         <script>
@@ -811,22 +795,8 @@ elif st.session_state.current_page == "family":
                 }
             });
 
-            function syncMyGPS() {
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(function(position) {
-                        var lat = position.coords.latitude;
-                        var lon = position.coords.longitude;
-                        document.getElementById("form_lat").value = lat.toFixed(5);
-                        document.getElementById("form_lon").value = lon.toFixed(5);
-                        document.getElementById("gpsForm").submit();
-                    }, function(err) {
-                        alert("無法獲取即時 GPS 座標，請確定允許定位權限。");
-                    }, { enableHighAccuracy: true, maximumAge: 0, timeout: 8000 });
-                }
-            }
-
             if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(function(position) {
+                navigator.geolocation.watchPosition(function(position) {
                     var lat = position.coords.latitude;
                     var lon = position.coords.longitude;
                     var accuracy = Math.round(position.coords.accuracy);
@@ -835,14 +805,6 @@ elif st.session_state.current_page == "family":
 
                     if (myCircleMarker) {
                         myCircleMarker.setLatLng([lat, lon]);
-                    }
-
-                    var curLat = parseFloat("__MY_LAT__");
-                    var curLon = parseFloat("__MY_LON__");
-                    if (Math.abs(lat - curLat) > 0.0001 || Math.abs(lon - curLon) > 0.0001) {
-                        document.getElementById("form_lat").value = lat.toFixed(5);
-                        document.getElementById("form_lon").value = lon.toFixed(5);
-                        document.getElementById("gpsForm").submit();
                     }
                 }, function(error) {}, {
                     enableHighAccuracy: true,
@@ -1045,7 +1007,7 @@ elif st.session_state.current_page == "audio":
     st.components.v1.html(audio_js, height=75)
 
 
-# ==================== 10. 功能頁面 5：🚨 全國 SOS 緊急求救專區 (一鍵發送 SMS 簡訊) ====================
+# ==================== 10. 功能頁面 5：🚨 全國 SOS 緊急求救專區 (一鍵喚起原生 SMS 簡訊) ====================
 elif st.session_state.current_page == "sos":
     st.markdown('<div class="back-btn">', unsafe_allow_html=True)
     if st.button("← 返回主頁面", key="back_sos"):
@@ -1060,24 +1022,20 @@ elif st.session_state.current_page == "sos":
     </div>
     """, unsafe_allow_html=True)
 
+    # 🎯 使用 window.top.location.href 強制突破 iframe 限制喚起手機原生 SMS App
     sos_gps_js_template = """
     <div style="text-align:center; padding:10px; background-color:#FFEBEE; border-radius:10px; border:1px solid #FFCDD2; margin-bottom:12px;">
         <div id="sosGpsStatus" style="font-size:0.9rem; color:#C62828; font-weight:bold; margin-bottom:8px;">
             📡 正在感應當前衛星精確 SOS GPS 座標...
         </div>
-        <form id="sosForm" action="" method="GET" target="_parent">
-            <input type="hidden" name="page" value="sos">
-            <input type="hidden" name="lat" id="sos_form_lat" value="__MY_LAT__">
-            <input type="hidden" name="lon" id="sos_form_lon" value="__MY_LON__">
-        </form>
     </div>
 
     <div style="background-color:#FFFFFF; border-radius:12px; padding:16px; border-left:5px solid #C62828; box-shadow:0 2px 10px rgba(0,0,0,0.04); margin-bottom:16px; text-align:center;">
         <h4 style="color:#C62828; margin-top:0; font-size:1.05rem;">📲 一鍵發送 SMS 求救簡訊 (自動帶入號碼與座標)</h4>
         
         <div style="margin-bottom:12px;">
-            <a id="smsLink" href="sms:110?body=SOS%20%E6%B1%82%E6%95%91" style="text-decoration:none;">
-                <div style="background-color:#C62828; color:white; font-size:1.15rem; font-weight:bold; padding:14px; border-radius:10px; box-shadow:0 4px 10px rgba(198,40,40,0.3);">
+            <a id="smsLink" href="javascript:void(0);" onclick="triggerSms(); return false;" target="_top" style="text-decoration:none;">
+                <div style="background-color:#C62828; color:white; font-size:1.15rem; font-weight:bold; padding:14px; border-radius:10px; box-shadow:0 4px 10px rgba(198,40,40,0.3); cursor:pointer;">
                     💬 點擊自動開啟手機簡訊 App 發送求救簡訊
                 </div>
             </a>
@@ -1087,24 +1045,24 @@ elif st.session_state.current_page == "sos":
         <div id="smsPreview" style="background-color:#F5F5F5; border-radius:8px; border:1px solid #E0E0E0; padding:10px; font-family:monospace; font-size:0.85rem; text-align:left; color:#333; word-break:break-all;">
             【🚨 SOS 全國緊急求救通報】<br>
             求救人暱稱：__USER_NICK__<br>
-            當前精確 GPS 座標：緯度 __MY_LAT__, 經度 __MY_LON__<br>
-            地圖位置導航：https://maps.google.com/?q=__MY_LAT__,__MY_LON__<br>
+            當前精確 GPS 座標：感應中...<br>
             請救援隊儘快聯繫搜救！
         </div>
     </div>
 
     <script>
-        function updateSmsButton(lat, lon) {
-            var nick = "__USER_NICK__";
-            var rawText = "【🚨 SOS 全國緊急求救通報】\\n" +
-                           "求救人暱稱：" + nick + "\\n" +
-                           "當前精確 GPS 座標：緯度 " + lat.toFixed(5) + ", 經度 " + lon.toFixed(5) + "\\n" +
-                           "地圖位置導航：https://maps.google.com/?q=" + lat.toFixed(5) + "," + lon.toFixed(5) + "\\n" +
+        var currentSmsText = "【🚨 SOS 全國緊急求救通報】\\n" +
+                           "求救人暱稱：__USER_NICK__\\n" +
+                           "當前精確 GPS 座標：感應中...\\n" +
                            "請救援隊儘快聯繫搜救！";
 
-            var encodedText = encodeURIComponent(rawText);
-            var smsUrl = "sms:110?body=" + encodedText;
-            document.getElementById("smsLink").href = smsUrl;
+        function updateSmsButton(lat, lon) {
+            var nick = "__USER_NICK__";
+            currentSmsText = "【🚨 SOS 全國緊急求救通報】\\n" +
+                               "求救人暱稱：" + nick + "\\n" +
+                               "當前精確 GPS 座標：緯度 " + lat.toFixed(5) + ", 經度 " + lon.toFixed(5) + "\\n" +
+                               "地圖位置導航：https://maps.google.com/?q=" + lat.toFixed(5) + "," + lon.toFixed(5) + "\\n" +
+                               "請救援隊儘快聯繫搜救！";
 
             var htmlPreview = "【🚨 SOS 全國緊急求救通報】<br>" +
                               "求救人暱稱：" + nick + "<br>" +
@@ -1112,6 +1070,19 @@ elif st.session_state.current_page == "sos":
                               "地圖位置導航：https://maps.google.com/?q=" + lat.toFixed(5) + "," + lon.toFixed(5) + "<br>" +
                               "請救援隊儘快聯繫搜救！";
             document.getElementById("smsPreview").innerHTML = htmlPreview;
+        }
+
+        function triggerSms() {
+            var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            var separator = isIOS ? '&' : '?';
+            var encodedText = encodeURIComponent(currentSmsText);
+            var smsUrl = "sms:110" + separator + "body=" + encodedText;
+
+            try {
+                window.top.location.href = smsUrl;
+            } catch(e) {
+                window.location.href = smsUrl;
+            }
         }
 
         if (navigator.geolocation) {
@@ -1123,14 +1094,6 @@ elif st.session_state.current_page == "sos":
                 document.getElementById("sosGpsStatus").innerHTML = "✅ 已鎖定極速 GPS 座標：緯度 " + lat.toFixed(5) + ", 經度 " + lon.toFixed(5) + " (誤差 ±" + accuracy + "米)";
                 
                 updateSmsButton(lat, lon);
-
-                var curLat = parseFloat("__MY_LAT__");
-                var curLon = parseFloat("__MY_LON__");
-                if (Math.abs(lat - curLat) > 0.0001 || Math.abs(lon - curLon) > 0.0001) {
-                    document.getElementById("sos_form_lat").value = lat.toFixed(5);
-                    document.getElementById("sos_form_lon").value = lon.toFixed(5);
-                    document.getElementById("sosForm").submit();
-                }
             }, function(error) {
                 document.getElementById("sosGpsStatus").innerHTML = "⚠️ 請允許定位權限以取得精確求救座標";
             }, {
@@ -1143,12 +1106,8 @@ elif st.session_state.current_page == "sos":
     """
 
     nick_name = st.session_state.user_nickname if st.session_state.user_nickname else "遊客"
-    cur_lat = st.session_state.my_lat
-    cur_lon = st.session_state.my_lon
 
-    rendered_sos_html = sos_gps_js_template.replace("__USER_NICK__", str(nick_name))\
-                                             .replace("__MY_LAT__", f"{cur_lat:.5f}")\
-                                             .replace("__MY_LON__", f"{cur_lon:.5f}")
+    rendered_sos_html = sos_gps_js_template.replace("__USER_NICK__", str(nick_name))
 
     st.components.v1.html(rendered_sos_html, height=270)
 
@@ -1157,12 +1116,12 @@ elif st.session_state.current_page == "sos":
     col_sos1, col_sos2 = st.columns(2)
     with col_sos1:
         st.markdown("""
-        <a href="tel:110" style="text-decoration:none;">
+        <a href="tel:110" target="_top" style="text-decoration:none;">
             <div style="background-color:#C62828; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold; margin-bottom:10px;">
                 📞 110 公安報案熱線
             </div>
         </a>
-        <a href="tel:120" style="text-decoration:none;">
+        <a href="tel:120" target="_top" style="text-decoration:none;">
             <div style="background-color:#C62828; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold; margin-bottom:10px;">
                 📞 120 醫療急救中心
             </div>
@@ -1171,16 +1130,16 @@ elif st.session_state.current_page == "sos":
 
     with col_sos2:
         st.markdown("""
-        <a href="tel:119" style="text-decoration:none;">
+        <a href="tel:119" target="_top" style="text-decoration:none;">
             <div style="background-color:#C62828; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold; margin-bottom:10px;">
                 📞 119 消防救援熱線
             </div>
         </a>
-        <a href="tel:999" style="text-decoration:none;">
+        <a href="tel:999" target="_top" style="text-decoration:none;">
             <div style="background-color:#0277BD; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold; margin-bottom:10px;">
                 📞 999 港澳緊急求救
             </div>
         </a>
         """, unsafe_allow_html=True)
 
-    st.info("💡 提示：點擊上方 SMS 簡訊發送按鈕，手機會自動開啟簡訊文字檔，按下發送即可迅速向搜救隊通報您的精確位置！")ds
+    st.info("💡 提示：點擊上方 SMS 簡訊發送按鈕，手機會自動開啟簡訊 App，按下發送即可迅速向搜救隊通報您的精確位置！")

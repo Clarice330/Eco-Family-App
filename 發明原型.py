@@ -734,7 +734,6 @@ elif st.session_state.current_page == "family":
 
         member_data_json_str = json.dumps(member_js_data, ensure_ascii=False)
 
-        # 採用標準表單 (target="_parent") 將 JavaScript 晶片測得的真實 GPS 寫回 Python shared_store
         map_html_template = """
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -833,7 +832,6 @@ elif st.session_state.current_page == "family":
                         myCircleMarker.setLatLng([lat, lon]);
                     }
 
-                    // 檢查若目前 Python 中的座標與衛星極速量出的有顯著差異，自動提交一次表單更新 shared_store
                     var curLat = parseFloat("__MY_LAT__");
                     var curLon = parseFloat("__MY_LON__");
                     if (Math.abs(lat - curLat) > 0.0001 || Math.abs(lon - curLon) > 0.0001) {
@@ -1057,7 +1055,6 @@ elif st.session_state.current_page == "sos":
     </div>
     """, unsafe_allow_html=True)
 
-    # 🎯 前端動態即時渲染一鍵 SMS 簡訊發送按鈕
     sos_gps_js_template = """
     <div style="text-align:center; padding:10px; background-color:#FFEBEE; border-radius:10px; border:1px solid #FFCDD2; margin-bottom:12px;">
         <div id="sosGpsStatus" style="font-size:0.9rem; color:#C62828; font-weight:bold; margin-bottom:8px;">
@@ -1100,7 +1097,6 @@ elif st.session_state.current_page == "sos":
                            "地圖位置導航：https://maps.google.com/?q=" + lat.toFixed(5) + "," + lon.toFixed(5) + "\\n" +
                            "請救援隊儘快聯繫搜救！";
 
-            // 針對 iOS / Android 的 sms: 協議編碼格式
             var encodedText = encodeURIComponent(rawText);
             var smsUrl = "sms:110?body=" + encodedText;
             document.getElementById("smsLink").href = smsUrl;
@@ -1173,7 +1169,7 @@ elif st.session_state.current_page == "sos":
         <a href="tel:119" style="text-decoration:none;">
             <div style="background-color:#C62828; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold; margin-bottom:10px;">
                 📞 119 消防救援熱線
-            </div>e
+            </div>
         </a>
         <a href="tel:999" style="text-decoration:none;">
             <div style="background-color:#0277BD; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold; margin-bottom:10px;">

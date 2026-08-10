@@ -1,4 +1,4 @@
-sda# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 🍀 絲野仙蹤 (Eco-Family) - 澳門親子綠色呼吸智慧康旅導航系統
 """
@@ -9,52 +9,13 @@ import requests
 import urllib.parse
 import time
 import math
-import json
 from datetime import datetime
-
-# ==================== 0. 全域跨 Session 共享記憶體 ====================
-@st.cache_resource
-def get_global_shared_store():
-    return {
-        "rooms": {},       # { room_id: { nickname: { "time": str, "lat": float, "lon": float, "status": str } } }
-        "broadcasts": {}   # { room_id: [ { "sender": str, "msg": str, "time": str } ] }
-    }
-
-shared_store = get_global_shared_store()
-
-
-# Haversine 球面大圓距離真實計算函數 (回傳公尺或公里)
-def calculate_haversine(lat1, lon1, lat2, lon2):
-    R = 6371000.0  # 地球平均半徑 (公尺)
-    phi1 = math.radians(lat1)
-    phi2 = math.radians(lat2)
-    delta_phi = math.radians(lat2 - lat1)
-    delta_lambda = math.radians(lon2 - lon1)
-
-    a = math.sin(delta_phi / 2.0)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2.0)**2
-    c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
-    meters = R * c
-
-    if meters < 1000.0:
-        return f"{round(meters, 1)} 公尺"
-    else:
-        return f"{round(meters / 1000.0, 2)} 公里"
-
 
 # ==================== 1. 全域 Session State 安全初始化 ====================
 query_params = st.query_params
 
 if "page" in query_params and query_params["page"]:
     st.session_state.current_page = query_params["page"]
-
-if "joined" in query_params and query_params["joined"] == "1":
-    st.session_state.joined_room = True
-
-if "room" in query_params and query_params["room"]:
-    st.session_state.room_id = query_params["room"]
-
-if "user" in query_params and query_params["user"]:
-    st.session_state.user_nickname = query_params["user"]
 
 # 讀取真實 GPS 座標
 if "lat" in query_params and "lon" in query_params:
@@ -94,13 +55,9 @@ if "audio_active" not in st.session_state:
 if "selected_insect_freq" not in st.session_state:
     st.session_state.selected_insect_freq = "17.4 kHz - 模擬雄蚊翅聲 (驅避咬人母蚊)"
 
-# 共享定位房間與暱稱 (預設為空字串，未填寫前不自動進入房間)
-if "room_id" not in st.session_state:
-    st.session_state.room_id = ""
+# 暱稱
 if "user_nickname" not in st.session_state:
     st.session_state.user_nickname = ""
-if "joined_room" not in st.session_state:
-    st.session_state.joined_room = False
 
 # 導航頁面狀態
 if "current_page" not in st.session_state:
@@ -128,7 +85,7 @@ st.markdown("""
         display: none;
     }
 
-    /* 四大功能按鈕容器寬度與邊距強制對齊 */
+    /* 主選單按鈕容器寬度與邊距強制對齊 */
     div[data-testid="stButton"], div[data-testid="stLinkButton"] {
         width: 100% !important;
         margin: 0 0 16px 0 !important;
@@ -136,7 +93,7 @@ st.markdown("""
         box-sizing: border-box !important;
     }
 
-    /* 四大功能按鈕 100% 強制像素級長度、高度與樣式完全對齊 */
+    /* 主選單按鈕 100% 強制像素級長度、高度與樣式完全對齊 */
     div[data-testid="stButton"] > button, div[data-testid="stLinkButton"] > a {
         width: 100% !important;
         background-color: #FFFFFF !important;
@@ -328,21 +285,20 @@ with col_head3:
 st.markdown("<hr style='margin-top:5px; margin-bottom:15px; border-color:#E8F5E9;'>", unsafe_allow_html=True)
 
 
-# ==================== 5. 頁面 1：主選單 ====================
+# ==================== 5. 頁面 1：主選單 (精簡優化版) ====================
 if st.session_state.current_page == "menu":
 
+    # 按鈕 1：智慧路線規劃
     if st.button("🗺️ 智慧路線規劃", key="btn_m1", use_container_width=True):
         st.session_state.current_page = "routes"
         st.rerun()
 
-    if st.button("📍 親友共享定位雷達", key="btn_m2", use_container_width=True):
-        st.session_state.current_page = "family"
-        st.rerun()
-
-    if st.button("🎒 隨行裝備", key="btn_m3", use_container_width=True):
+    # 按鈕 2：隨行裝備 (向上移動)
+    if st.button("🎒 隨行裝備", key="btn_m2", use_container_width=True):
         st.session_state.current_page = "gear"
         st.rerun()
 
+    # 按鈕 3：親子生態動植物識別 (向上移動)
     ext_url = "https://eddychan912-blip.github.io/eco-tracker11/"
     st.link_button("🔍 親子生態動植物識別", ext_url, use_container_width=True)
 
@@ -631,218 +587,7 @@ elif st.session_state.current_page == "routes":
         """, unsafe_allow_html=True)
 
 
-# ==================== 7. 功能頁面 2：📍 親友共享定位雷達 ====================
-elif st.session_state.current_page == "family":
-    st.markdown('<div class="back-btn">', unsafe_allow_html=True)
-    if st.button("← 返回主頁面", key="back_family"):
-        st.session_state.current_page = "menu"
-        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="card">
-        <h3 style="margin-top:0px; color:#1E5631;">📍 親友共享定位雷達</h3>
-        <p style="font-size:0.9rem; margin-bottom:8px;">請輸入您的暱稱與房間號碼。按下<b>「進入共享房間」</b>後，系統將讀取真實 GPS 定位。<b style="color:#D32F2F;">🔴 紅色為你自己</b>，<b style="color:#1976D2;">🔵 藍色為親友成員</b>。</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    col_input1, col_input2 = st.columns(2)
-    with col_input1:
-        input_nick = st.text_input("👤 您的暱稱 (請填寫)", value=st.session_state.user_nickname, placeholder="例如: 媽媽")
-    with col_input2:
-        input_room = st.text_input("🔑 房間號碼 (請填寫)", value=st.session_state.room_id, placeholder="例如: 8888")
-
-    btn_col1, btn_col2 = st.columns([2, 1])
-    with btn_col1:
-        if st.button("🚀 進入共享房間", key="join_room_btn"):
-            if not input_nick.strip() or not input_room.strip():
-                st.warning("⚠️ 請務必填寫【暱稱】與【房間號碼】後再點擊進入！")
-            else:
-                st.session_state.user_nickname = input_nick.strip()
-                st.session_state.room_id = input_room.strip()
-                st.session_state.joined_room = True
-                st.rerun()
-    
-    with btn_col2:
-        if st.session_state.joined_room:
-            if st.button("🚪 離開房間", key="leave_room_btn"):
-                st.session_state.joined_room = False
-                st.rerun()
-
-    if not st.session_state.joined_room:
-        st.info("💡 請在上方輸入您的 **暱稱** 與 **房間號碼**，並點擊 **「🚀 進入共享房間」** 按鈕以開始雷達定位與成員共享。")
-    else:
-        room_key = st.session_state.room_id
-        current_nickname = st.session_state.user_nickname
-        now_time_str = datetime.now().strftime("%H:%M:%S")
-
-        if room_key not in shared_store["rooms"]:
-            shared_store["rooms"][room_key] = {}
-        if room_key not in shared_store["broadcasts"]:
-            shared_store["broadcasts"][room_key] = []
-
-        recent_broadcasts = shared_store["broadcasts"][room_key]
-        if recent_broadcasts:
-            last_bc = recent_broadcasts[-1]
-            st.error(f"🚨 **【緊急集合廣播通知】** 來自成員 **[{last_bc['sender']}]** ({last_bc['time']})：\n\n📢 *\"{last_bc['msg']}\"*")
-
-        shared_store["rooms"][room_key][current_nickname] = {
-            "time": now_time_str,
-            "lat": st.session_state.my_lat,
-            "lon": st.session_state.my_lon,
-            "status": "🟢 長亮連線中"
-        }
-
-        members = shared_store["rooms"][room_key]
-        display_m = []
-        
-        my_lat = st.session_state.my_lat
-        my_lon = st.session_state.my_lon
-
-        member_list_sorted = list(members.items())
-        member_js_data = []
-
-        for idx, (nick, info) in enumerate(member_list_sorted):
-            is_me = (nick == current_nickname)
-            m_lat = info.get("lat", 22.1568)
-            m_lon = info.get("lon", 113.5615)
-
-            if is_me:
-                dist_str = "0 公尺"
-            else:
-                dist_str = calculate_haversine(my_lat, my_lon, m_lat, m_lon)
-
-            display_m.append({
-                "成員暱稱": f"{nick} (我自己)" if is_me else nick,
-                "最後連線時間": info["time"],
-                "相對距離 (離我多遠)": dist_str,
-                "連線狀態": info["status"]
-            })
-
-            color = '#D32F2F' if is_me else '#1976D2'
-            display_label = f"{nick} (我自己)" if is_me else nick
-
-            member_js_data.append({
-                "nick": display_label,
-                "is_me": is_me,
-                "lat": m_lat,
-                "lon": m_lon,
-                "color": color,
-                "time": info["time"],
-                "dist": dist_str
-            })
-
-        member_data_json_str = json.dumps(member_js_data, ensure_ascii=False)
-
-        map_html_template = """
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-        <style>
-            .member-label {
-                background-color: rgba(255, 255, 255, 0.98) !important;
-                border: 1.5px solid #D32F2F !important;
-                color: #D32F2F !important;
-                font-weight: bold !important;
-                font-size: 0.85rem !important;
-                border-radius: 6px !important;
-                padding: 3px 8px !important;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.2) !important;
-                white-space: nowrap !important;
-            }
-            .other-member-label {
-                border-color: #1976D2 !important;
-                color: #1976D2 !important;
-            }
-        </style>
-        <div style="text-align:center; padding:8px; background-color:#E8F5E9; border-radius:10px; border:1px solid #C8E6C9; margin-bottom:10px;">
-            <div id="gpsStatus" style="font-size:0.9rem; color:#1B5E20; font-weight:bold;">
-                🔴 紅色：我自己 | 🔵 藍色：親友成員 (已進入房間 [__ROOM_KEY__])
-            </div>
-        </div>
-        <div id="radarMap" style="width: 100%; height: 350px; border-radius: 12px; border: 1.5px solid #C8E6C9;"></div>
-        <script>
-            var members = __MEMBER_JSON__;
-            var map = L.map('radarMap', { preferCanvas: false }).setView([__MY_LAT__, __MY_LON__], 17);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '© OpenStreetMap'
-            }).addTo(map);
-
-            var myCircleMarker = null;
-
-            members.forEach(function(m) {
-                var circle = L.circleMarker([m.lat, m.lon], {
-                    color: '#FFFFFF',
-                    weight: 2.5,
-                    fillColor: m.color,
-                    fillOpacity: 0.92,
-                    radius: 12
-                }).addTo(map);
-
-                var labelClass = m.is_me ? 'member-label' : 'member-label other-member-label';
-
-                circle.bindTooltip('<b>' + m.nick + '</b>', {
-                    permanent: true,
-                    direction: 'top',
-                    className: labelClass,
-                    offset: [0, -10]
-                }).openTooltip();
-
-                circle.bindPopup('<b>' + m.nick + '</b><br>連線時間: ' + m.time + '<br>相對距離: ' + m.dist);
-
-                if (m.is_me) {
-                    myCircleMarker = circle;
-                }
-            });
-
-            if (navigator.geolocation) {
-                navigator.geolocation.watchPosition(function(position) {
-                    var lat = position.coords.latitude;
-                    var lon = position.coords.longitude;
-                    var accuracy = Math.round(position.coords.accuracy);
-
-                    document.getElementById("gpsStatus").innerHTML = "🔴 紅色：我自己 | 🔵 藍色：親友成員 (衛星 GPS 追蹤 ±" + accuracy + "米)";
-
-                    if (myCircleMarker) {
-                        myCircleMarker.setLatLng([lat, lon]);
-                    }
-                }, function(error) {}, {
-                    enableHighAccuracy: true,
-                    maximumAge: 0,
-                    timeout: 10000
-                });
-            }
-        </script>
-        """
-
-        integrated_map_html = map_html_template.replace("__ROOM_KEY__", str(room_key))\
-                                                .replace("__MEMBER_JSON__", member_data_json_str)\
-                                                .replace("__MY_LAT__", str(my_lat))\
-                                                .replace("__MY_LON__", str(my_lon))\
-                                                .replace("__CURRENT_NICK__", str(current_nickname))
-
-        st.components.v1.html(integrated_map_html, height=425)
-
-        st.markdown(f"#### 📡 房間 **[{room_key}]** 實時成員清單 ({len(display_m)} 人)：")
-        df_m = pd.DataFrame(display_m)
-        st.dataframe(df_m, use_container_width=True)
-
-        col_b1, col_b2 = st.columns(2)
-        with col_b1:
-            if st.button("📢 發送集合通知", key="send_bc"):
-                shared_store["broadcasts"][room_key].append({
-                    "sender": current_nickname,
-                    "msg": f"注意！成員 [{current_nickname}] 發起了緊急集合通知，請儘快至附近地標會合！",
-                    "time": now_time_str
-                })
-                st.toast("已發送集合通知！已寫入共享廣播頻道。", icon="📢")
-                st.rerun()
-        with col_b2:
-            if st.button("🔄 重新整理雷達連線", key="ref_radar"):
-                st.rerun()
-
-
-# ==================== 8. 功能頁面 3：🎒 隨行裝備 ====================
+# ==================== 7. 功能頁面 2：🎒 隨行裝備 ====================
 elif st.session_state.current_page == "gear":
     st.markdown('<div class="back-btn">', unsafe_allow_html=True)
     if st.button("← 返回主頁面", key="back_gear"):
@@ -922,7 +667,7 @@ elif st.session_state.current_page == "gear":
         st.checkbox("😷 **兒童高防護透氣口罩**", value=True, key="gear_pm_high")
 
 
-# ==================== 9. 功能頁面 4：🪰 多頻率驅聲波 ====================
+# ==================== 8. 功能頁面 3：🪰 多頻率驅聲波 ====================
 elif st.session_state.current_page == "audio":
     st.markdown('<div class="back-btn">', unsafe_allow_html=True)
     if st.button("← 返回主頁面", key="back_audio"):
@@ -1007,7 +752,7 @@ elif st.session_state.current_page == "audio":
     st.components.v1.html(audio_js, height=75)
 
 
-# ==================== 10. 功能頁面 5：🚨 全國 SOS 緊急求救專區 (一鍵喚起原生 SMS 簡訊) ====================
+# ==================== 9. 功能頁面 4：🚨 全國 SOS 緊急求救專區 (一鍵複製簡訊 + 自動識別地區專線) ====================
 elif st.session_state.current_page == "sos":
     st.markdown('<div class="back-btn">', unsafe_allow_html=True)
     if st.button("← 返回主頁面", key="back_sos"):
@@ -1018,70 +763,95 @@ elif st.session_state.current_page == "sos":
     st.markdown("""
     <div class="card" style="border-left:5px solid #C62828; background-color:#FFEBEE;">
         <h3 style="margin-top:0px; color:#B71C1C;">🚨 全國緊急求救與精準 GPS 定位通報</h3>
-        <p style="font-size:0.9rem; color:#C62828; margin-bottom:0;">如在戶外遇到緊急情況，請保持冷靜。點擊下方專線直撥或<b>點擊按鈕自動發送一鍵 SMS 求救簡訊</b>：</p>
+        <p style="font-size:0.9rem; color:#C62828; margin-bottom:0;">如在戶外遇到緊急情況，請保持冷靜。系統已自動獲取您的 GPS 並比對地區緊急求救熱線：</p>
     </div>
     """, unsafe_allow_html=True)
 
-    # 🎯 使用 window.top.location.href 強制突破 iframe 限制喚起手機原生 SMS App
-    sos_gps_js_template = """
+    sos_js_template = """
     <div style="text-align:center; padding:10px; background-color:#FFEBEE; border-radius:10px; border:1px solid #FFCDD2; margin-bottom:12px;">
-        <div id="sosGpsStatus" style="font-size:0.9rem; color:#C62828; font-weight:bold; margin-bottom:8px;">
+        <div id="sosGpsStatus" style="font-size:0.9rem; color:#C62828; font-weight:bold; margin-bottom:6px;">
             📡 正在感應當前衛星精確 SOS GPS 座標...
         </div>
+        <div id="regionNotice" style="font-size:0.85rem; color:#B71C1C; font-weight:bold;"></div>
     </div>
 
     <div style="background-color:#FFFFFF; border-radius:12px; padding:16px; border-left:5px solid #C62828; box-shadow:0 2px 10px rgba(0,0,0,0.04); margin-bottom:16px; text-align:center;">
-        <h4 style="color:#C62828; margin-top:0; font-size:1.05rem;">📲 一鍵發送 SMS 求救簡訊 (自動帶入號碼與座標)</h4>
+        <h4 style="color:#C62828; margin-top:0; font-size:1.05rem;">📋 一鍵複製精準 GPS 求救簡訊內容</h4>
         
         <div style="margin-bottom:12px;">
-            <a id="smsLink" href="javascript:void(0);" onclick="triggerSms(); return false;" target="_top" style="text-decoration:none;">
-                <div style="background-color:#C62828; color:white; font-size:1.15rem; font-weight:bold; padding:14px; border-radius:10px; box-shadow:0 4px 10px rgba(198,40,40,0.3); cursor:pointer;">
-                    💬 點擊自動開啟手機簡訊 App 發送求救簡訊
-                </div>
-            </a>
+            <button id="copyBtn" onclick="copySosText()" style="width:100%; background-color:#C62828; color:white; font-size:1.1rem; font-weight:bold; padding:14px; border:none; border-radius:10px; cursor:pointer; box-shadow:0 4px 10px rgba(198,40,40,0.3);">
+                📋 一鍵複製求救簡訊內容 (含實時經緯度)
+            </button>
         </div>
 
-        <p style="font-size:0.85rem; color:#666; text-align:left; margin-bottom:4px; font-weight:bold;">📋 簡訊預覽內容：</p>
-        <div id="smsPreview" style="background-color:#F5F5F5; border-radius:8px; border:1px solid #E0E0E0; padding:10px; font-family:monospace; font-size:0.85rem; text-align:left; color:#333; word-break:break-all;">
-            【🚨 SOS 全國緊急求救通報】<br>
-            求救人暱稱：__USER_NICK__<br>
-            當前精確 GPS 座標：感應中...<br>
-            請救援隊儘快聯繫搜救！
+        <p style="font-size:0.85rem; color:#666; text-align:left; margin-bottom:4px; font-weight:bold;">📱 將複製的內文貼至微信、簡訊發送給救援隊：</p>
+        <textarea id="sosTextarea" readonly style="width:100%; height:115px; background-color:#F9F9F9; border-radius:8px; border:1px solid #FFCDD2; padding:10px; font-family:monospace; font-size:0.85rem; box-sizing:border-box; color:#333;"></textarea>
+    </div>
+
+    <div id="phoneArea" style="margin-bottom:16px;">
+        <h5 style="margin-bottom:8px; color:#1B5E20;">📞 當前地區求助熱線直撥</h5>
+        <div style="display:flex; gap:10px;">
+            <a id="pBtn1" href="tel:110" style="flex:1; text-decoration:none;">
+                <div style="background-color:#C62828; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold;">
+                    📞 110 報案
+                </div>
+            </a>
+            <a id="pBtn2" href="tel:119" style="flex:1; text-decoration:none;">
+                <div style="background-color:#C62828; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold;">
+                    📞 119 消防
+                </div>
+            </a>
+            <a id="pBtn3" href="tel:120" style="flex:1; text-decoration:none;">
+                <div style="background-color:#C62828; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold;">
+                    📞 120 急救
+                </div>
+            </a>
         </div>
     </div>
 
     <script>
-        var currentSmsText = "【🚨 SOS 全國緊急求救通報】\\n" +
-                           "求救人暱稱：__USER_NICK__\\n" +
-                           "當前精確 GPS 座標：感應中...\\n" +
-                           "請救援隊儘快聯繫搜救！";
-
-        function updateSmsButton(lat, lon) {
+        function generateSosText(lat, lon) {
             var nick = "__USER_NICK__";
-            currentSmsText = "【🚨 SOS 全國緊急求救通報】\\n" +
-                               "求救人暱稱：" + nick + "\\n" +
-                               "當前精確 GPS 座標：緯度 " + lat.toFixed(5) + ", 經度 " + lon.toFixed(5) + "\\n" +
-                               "地圖位置導航：https://maps.google.com/?q=" + lat.toFixed(5) + "," + lon.toFixed(5) + "\\n" +
-                               "請救援隊儘快聯繫搜救！";
-
-            var htmlPreview = "【🚨 SOS 全國緊急求救通報】<br>" +
-                              "求救人暱稱：" + nick + "<br>" +
-                              "當前精確 GPS 座標：緯度 " + lat.toFixed(5) + ", 經度 " + lon.toFixed(5) + "<br>" +
-                              "地圖位置導航：https://maps.google.com/?q=" + lat.toFixed(5) + "," + lon.toFixed(5) + "<br>" +
-                              "請救援隊儘快聯繫搜救！";
-            document.getElementById("smsPreview").innerHTML = htmlPreview;
+            return "【🚨 SOS 全國緊急求救通報】\\n" +
+                   "求救人暱稱：" + nick + "\\n" +
+                   "當前精確 GPS 座標：緯度 " + lat.toFixed(5) + ", 經度 " + lon.toFixed(5) + "\\n" +
+                   "地圖位置導航：https://maps.google.com/?q=" + lat.toFixed(5) + "," + lon.toFixed(5) + "\\n" +
+                   "請救援隊儘快聯繫搜救！";
         }
 
-        function triggerSms() {
-            var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-            var separator = isIOS ? '&' : '?';
-            var encodedText = encodeURIComponent(currentSmsText);
-            var smsUrl = "sms:110" + separator + "body=" + encodedText;
-
+        function copySosText() {
+            var ta = document.getElementById("sosTextarea");
+            ta.select();
+            ta.setSelectionRange(0, 99999);
             try {
-                window.top.location.href = smsUrl;
+                document.execCommand('copy');
+                document.getElementById("copyBtn").innerText = "✅ 複製成功！請至通訊軟體貼上發送";
+                document.getElementById("copyBtn").style.backgroundColor = "#2E7D32";
+                setTimeout(function(){
+                    document.getElementById("copyBtn").innerText = "📋 一鍵複製求救簡訊內容 (含實時經緯度)";
+                    document.getElementById("copyBtn").style.backgroundColor = "#C62828";
+                }, 3000);
             } catch(e) {
-                window.location.href = smsUrl;
+                alert("請手動長按選擇上方文字框進行複製。");
+            }
+        }
+
+        function updateRegionPhone(lat, lon) {
+            var isMacau = (lat >= 22.10 && lat <= 22.22 && lon >= 113.50 && lon <= 113.60);
+            var isHK = (lat >= 22.15 && lat <= 22.58 && lon >= 113.80 && lon <= 114.40);
+
+            if (isMacau) {
+                document.getElementById("regionNotice").innerHTML = "📍 定位顯示您在【澳門地區】，推薦優先撥打 999 或 110/119";
+                document.getElementById("pBtn1").href = "tel:999";
+                document.getElementById("pBtn1").children[0].innerText = "📞 999 澳門報案";
+                document.getElementById("pBtn1").children[0].style.backgroundColor = "#0277BD";
+            } else if (isHK) {
+                document.getElementById("regionNotice").innerHTML = "📍 定位顯示您在【香港地區】，推薦優先撥打 999";
+                document.getElementById("pBtn1").href = "tel:999";
+                document.getElementById("pBtn1").children[0].innerText = "📞 999 香港求助";
+                document.getElementById("pBtn1").children[0].style.backgroundColor = "#0277BD";
+            } else {
+                document.getElementById("regionNotice").innerHTML = "📍 全國地區預設緊急熱線：110 (公安) / 119 (消防) / 120 (醫療)";
             }
         }
 
@@ -1091,11 +861,13 @@ elif st.session_state.current_page == "sos":
                 var lon = position.coords.longitude;
                 var accuracy = Math.round(position.coords.accuracy);
                 
-                document.getElementById("sosGpsStatus").innerHTML = "✅ 已鎖定極速 GPS 座標：緯度 " + lat.toFixed(5) + ", 經度 " + lon.toFixed(5) + " (誤差 ±" + accuracy + "米)";
+                document.getElementById("sosGpsStatus").innerHTML = "✅ 已鎖定極速衛星 GPS 座標 (誤差 ±" + accuracy + "米)";
                 
-                updateSmsButton(lat, lon);
+                var txt = generateSosText(lat, lon);
+                document.getElementById("sosTextarea").value = txt;
+                updateRegionPhone(lat, lon);
             }, function(error) {
-                document.getElementById("sosGpsStatus").innerHTML = "⚠️ 請允許定位權限以取得精確求救座標";
+                document.getElementById("sosGpsStatus").innerHTML = "⚠️ 請允許定位權限以感應精確求救座標";
             }, {
                 enableHighAccuracy: true,
                 maximumAge: 0,
@@ -1106,40 +878,8 @@ elif st.session_state.current_page == "sos":
     """
 
     nick_name = st.session_state.user_nickname if st.session_state.user_nickname else "遊客"
+    rendered_sos_html = sos_js_template.replace("__USER_NICK__", str(nick_name))
 
-    rendered_sos_html = sos_gps_js_template.replace("__USER_NICK__", str(nick_name))
+    st.components.v1.html(rendered_sos_html, height=360)
 
-    st.components.v1.html(rendered_sos_html, height=270)
-
-    st.markdown("##### 📞 全國 / 港澳緊急救援直撥專線")
-
-    col_sos1, col_sos2 = st.columns(2)
-    with col_sos1:
-        st.markdown("""
-        <a href="tel:110" target="_top" style="text-decoration:none;">
-            <div style="background-color:#C62828; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold; margin-bottom:10px;">
-                📞 110 公安報案熱線
-            </div>
-        </a>
-        <a href="tel:120" target="_top" style="text-decoration:none;">
-            <div style="background-color:#C62828; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold; margin-bottom:10px;">
-                📞 120 醫療急救中心
-            </div>
-        </a>
-        """, unsafe_allow_html=True)
-
-    with col_sos2:
-        st.markdown("""
-        <a href="tel:119" target="_top" style="text-decoration:none;">
-            <div style="background-color:#C62828; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold; margin-bottom:10px;">
-                📞 119 消防救援熱線
-            </div>
-        </a>
-        <a href="tel:999" target="_top" style="text-decoration:none;">
-            <div style="background-color:#0277BD; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold; margin-bottom:10px;">
-                📞 999 港澳緊急求救
-            </div>
-        </a>
-        """, unsafe_allow_html=True)
-
-    st.info("💡 提示：點擊上方 SMS 簡訊發送按鈕，手機會自動開啟簡訊 App，按下發送即可迅速向搜救隊通報您的精確位置！")
+    st.info("💡 提示：點擊上方「一鍵複製」按鈕後，打開微信、簡訊或對講軟體貼上，即可將精確 GPS 座標發給救援隊！")

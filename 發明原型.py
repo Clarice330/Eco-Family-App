@@ -1171,7 +1171,7 @@ elif st.session_state.current_page == "sos":
                 📞 119 消防救援熱線
             </div>
         </a>
-        <a href="tel:999" style="text-decoration:none;">
+        <a href="tel:999" style="taext-decoration:none;">
             <div style="background-color:#0277BD; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold; margin-bottom:10px;">
                 📞 999 港澳緊急求救
             </div>

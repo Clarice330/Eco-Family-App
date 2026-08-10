@@ -1183,4 +1183,4 @@ elif st.session_state.current_page == "sos":
         </a>
         """, unsafe_allow_html=True)
 
-    st.info("💡 提示：點擊上方 SMS 簡訊發送按鈕，手機會自動開啟簡訊文字檔，按下發送即可迅速向搜救隊通報您的精確位置！")
+    st.info("💡 提示：點擊上方 SMS 簡訊發送按鈕，手機會自動開啟簡訊文字檔，按下發送即可迅速向搜救隊通報您的精確位置！")ds

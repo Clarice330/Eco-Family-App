@@ -925,7 +925,7 @@ elif st.session_state.current_page == "sos":
         }
     </script>
     """
-
+xc
     nick_name = st.session_state.user_nickname if st.session_state.user_nickname else "遊客"
     rendered_sos_html = sos_js_template.replace("__USER_NICK__", str(nick_name))\
                                        .replace("__STATUS_SIZE__", "1.3rem" if is_senior else "0.9rem")\

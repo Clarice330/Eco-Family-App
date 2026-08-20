@@ -924,7 +924,7 @@ elif st.session_state.current_page == "sos":
                 timeout: 8000
             });
         }
-    </script>
+    </script>s
     """
 
     nick_name = st.session_state.user_nickname if st.session_state.user_nickname else "未設定暱稱遊客"

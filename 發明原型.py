@@ -3,7 +3,7 @@
 🍀 絲野仙蹤 (Eco-Family) - 澳門親子綠色呼吸智慧康旅導航系統
 """
 
-import streamlit as st
+import streamlit as stsda
 import pandas as pd
 import requests
 import urllib.parse

@@ -76,7 +76,6 @@ st.set_page_config(
 )
 
 # ==================== 2. 全局 CSS 樣式美化 (動態切換大字體模式) ====================
-# 依據 session_state 決定縮放比例 (預設 1.0，按了切換為 1.18)
 zoom_val = "1.18" if st.session_state.is_elder_mode else "1.0"
 
 st.markdown(f"""
@@ -309,7 +308,6 @@ st.markdown("<hr style='margin-top:5px; margin-bottom:15px; border-color:#E8F5E9
 # ==================== 5. 頁面 1：主選單 ====================
 if st.session_state.current_page == "menu":
 
-    # 老年版 / 大字體切換開關 (勾選時才會切換為大字體模式)
     elder_toggle = st.toggle("👵 關愛大字體模式 (老年版)", value=st.session_state.is_elder_mode)
     if elder_toggle != st.session_state.is_elder_mode:
         st.session_state.is_elder_mode = elder_toggle
@@ -366,10 +364,11 @@ elif st.session_state.current_page == "routes":
 
     st.write("")
 
+    # 已將氣候更換為氣象
     st.markdown("""
     <div class="card">
         <h3 style="margin-top:0px; color:#1E5631;">🗺️ 澳門目的地與氣象/設施適應路線規劃</h3>
-        <p style="font-size:0.9rem; margin-bottom:0;">選擇目的地並可依據<b>坡度需求、母嬰室設施與當前氣候</b>自動調整評分與推薦：</p>
+        <p style="font-size:0.9rem; margin-bottom:0;">選擇目的地並可依據<b>坡度需求、母嬰室設施與當前氣象</b>自動調整評分與推薦：</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -565,12 +564,13 @@ elif st.session_state.current_page == "routes":
     dest_routes = macau_18_unique_destinations[selected_dest]
     time_seed = int(time.time() / 8)
 
+    # 已將氣候更換為氣象
     if is_rain:
-        st.info("🌧️ 檢測到降雨天氣！系統已為您優先推薦【風雨遮陽 / 室內避雨路線】。")
+        st.info("🌧️ 檢測到降雨氣象！系統已為您優先推薦【風雨遮陽 / 室內避雨路線】。")
     elif cur_temp >= 26.0 or cur_uv >= 2.5:
-        st.info("☀️ 檢測到高溫/強紫外線！系統已為您優先推薦【高樹蔭覆蓋林陰避暑路線】。")
+        st.info("☀️ 檢測到高溫/強紫外線氣象！系統已為您優先推薦【高樹蔭覆蓋林陰避暑路線】。")
     else:
-        st.success("🌤️ 當前天氣晴朗宜人！系統已為您優先推薦【山頂展望 / 景觀視野路線】。")
+        st.success("🌤️ 當前氣象晴朗宜人！系統已為您優先推薦【山頂展望 / 景觀視野路線】。")
 
     filtered_routes = []
     for r in dest_routes:
@@ -924,7 +924,7 @@ elif st.session_state.current_page == "sos":
                 timeout: 8000
             });
         }
-    </script>s
+    </script>
     """
 
     nick_name = st.session_state.user_nickname if st.session_state.user_nickname else "未設定暱稱遊客"

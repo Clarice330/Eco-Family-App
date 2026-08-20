@@ -3,7 +3,7 @@
 🍀 絲野仙蹤 (Eco-Family) - 澳門親子綠色呼吸智慧康旅導航系統
 """
 
-import streamlit as stsda
+import streamlit as st
 import pandas as pd
 import requests
 import urllib.parse
@@ -16,14 +16,6 @@ query_params = st.query_params
 
 if "page" in query_params and query_params["page"]:
     st.session_state.current_page = query_params["page"]
-
-# 讀取真實 GPS 座標
-if "lat" in query_params and "lon" in query_params:
-    try:
-        st.session_state.my_lat = float(query_params["lat"])
-        st.session_state.my_lon = float(query_params["lon"])
-    except ValueError:
-        pass
 
 if "global_temp" not in st.session_state:
     st.session_state.global_temp = 22.5
@@ -43,6 +35,14 @@ if "global_aqi" not in st.session_state:
 if "override_weather" not in st.session_state:
     st.session_state.override_weather = False
 
+# 讀取真實 GPS 座標
+if "lat" in query_params and "lon" in query_params:
+    try:
+        st.session_state.my_lat = float(query_params["lat"])
+        st.session_state.my_lon = float(query_params["lon"])
+    except ValueError:
+        pass
+
 # 使用者 GPS 座標 (預設澳門座標)
 if "my_lat" not in st.session_state:
     st.session_state.my_lat = 22.1568
@@ -55,7 +55,6 @@ if "audio_active" not in st.session_state:
 if "selected_insect_freq" not in st.session_state:
     st.session_state.selected_insect_freq = "17.4 kHz - 模擬雄蚊翅聲 (驅避咬人母蚊)"
 
-# 暱稱
 if "user_nickname" not in st.session_state:
     st.session_state.user_nickname = ""
 
@@ -85,7 +84,7 @@ st.markdown("""
         display: none;
     }
 
-    /* 主選單按鈕容器寬度與邊距強制對齊 */
+    /* 功能按鈕容器寬度與邊距強制對齊 */
     div[data-testid="stButton"], div[data-testid="stLinkButton"] {
         width: 100% !important;
         margin: 0 0 16px 0 !important;
@@ -93,7 +92,7 @@ st.markdown("""
         box-sizing: border-box !important;
     }
 
-    /* 主選單按鈕 100% 強制像素級長度、高度與樣式完全對齊 */
+    /* 功能按鈕 100% 強制像素級長度、高度與樣式完全對齊 */
     div[data-testid="stButton"] > button, div[data-testid="stLinkButton"] > a {
         width: 100% !important;
         background-color: #FFFFFF !important;
@@ -210,6 +209,15 @@ st.markdown("""
         font-size: 0.8rem;
         font-weight: bold;
     }
+    .badge-feature {
+        background-color: #0277BD;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-size: 0.78rem;
+        font-weight: bold;
+        margin-left: 4px;
+    }
 
     /* 返回按鈕樣式 */
     .back-btn button {
@@ -277,7 +285,7 @@ with col_head2:
 
 with col_head3:
     st.markdown('<div class="sos-header-btn">', unsafe_allow_html=True)
-    if st.button("🚨 全國 SOS", key="top_right_sos_btn"):
+    if st.button("🚨 一鍵求救", key="top_right_sos_btn"):
         st.session_state.current_page = "sos"
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
@@ -285,25 +293,22 @@ with col_head3:
 st.markdown("<hr style='margin-top:5px; margin-bottom:15px; border-color:#E8F5E9;'>", unsafe_allow_html=True)
 
 
-# ==================== 5. 頁面 1：主選單 (精簡優化版) ====================
+# ==================== 5. 頁面 1：主選單 ====================
 if st.session_state.current_page == "menu":
 
-    # 按鈕 1：智慧路線規劃
     if st.button("🗺️ 智慧路線規劃", key="btn_m1", use_container_width=True):
         st.session_state.current_page = "routes"
         st.rerun()
 
-    # 按鈕 2：隨行裝備 (向上移動)
     if st.button("🎒 隨行裝備", key="btn_m2", use_container_width=True):
         st.session_state.current_page = "gear"
         st.rerun()
 
-    # 按鈕 3：親子生態動植物識別 (向上移動)
     ext_url = "https://eddychan912-blip.github.io/eco-tracker11/"
     st.link_button("🔍 親子生態動植物識別", ext_url, use_container_width=True)
 
 
-# ==================== 6. 功能頁面 1：🗺️ 智慧路線規劃 ====================
+# ==================== 6. 功能頁面 1：🗺️ 智慧路線規劃 (含坡度與母嬰室條件篩選) ====================
 elif st.session_state.current_page == "routes":
     st.markdown('<div class="back-btn">', unsafe_allow_html=True)
     if st.button("← 返回主頁面", key="back_routes"):
@@ -344,33 +349,37 @@ elif st.session_state.current_page == "routes":
 
     st.markdown("""
     <div class="card">
-        <h3 style="margin-top:0px; color:#1E5631;">🗺️ 澳門目的地與氣象適應路線規劃</h3>
-        <p style="font-size:0.9rem; margin-bottom:0;">選擇澳門目的地，系統將依據<b>當前氣溫、紫外線與是否降雨</b>推薦最適路線：</p>
+        <h3 style="margin-top:0px; color:#1E5631;">🗺️ 澳門目的地與氣象/設施適應路線規劃</h3>
+        <p style="font-size:0.9rem; margin-bottom:0;">選擇目的地並可依據<b>坡度需求、母嬰室設施與當前氣候</b>自動調整評分與推薦：</p>
     </div>
     """, unsafe_allow_html=True)
 
+    # 18 條路線資料庫 (包含坡度斜度與母嬰室設有狀態)
     macau_18_unique_destinations = {
         "大潭山步行徑 (氹仔島)": [
             {
                 "id": 101, "target_condition": "rain",
                 "name": "🌲 大潭山斜行升降機風雨遮陽主線",
                 "shade": 95, "rain_safe": True, "base_crowd": 12,
+                "slope": "平緩 (斜行電梯/無障礙)", "has_nursery": True,
                 "length": "2.2 公里", "time": "40 分鐘",
                 "origin": "113.5615,22.1568", "destination": "113.5630,22.1580", "dest_name": "大潭山斜行升降機",
-                "desc": "【下雨/惡劣天氣專屬推薦】設有無障礙風雨連廊與斜行電梯，95% 高樹蔭覆蓋防雨防曬。"
+                "desc": "【下雨/惡劣天氣專屬推薦】設有無障礙風雨連廊與斜行電梯，設有母嬰洗手間，95% 高樹蔭覆蓋。"
             },
             {
                 "id": 102, "target_condition": "hot",
                 "name": "🦋 大潭山谷地賞蝶樹蔭林陰密徑",
                 "shade": 90, "rain_safe": False, "base_crowd": 8,
+                "slope": "中等緩坡", "has_nursery": True,
                 "length": "1.8 公里", "time": "35 分鐘",
                 "origin": "113.5615,22.1568", "destination": "113.5620,22.1595", "dest_name": "大潭山郊野公園",
-                "desc": "【高溫/強紫外線專屬推薦】茂密山谷樹蔭天然擋陽，空氣高負離子降溫。"
+                "desc": "【高溫/強紫外線專屬推薦】茂密山谷樹蔭天然擋陽，郊野公園內備有母嬰室及休息亭。"
             },
             {
                 "id": 103, "target_condition": "cool",
                 "name": "☀️ 大潭山山頂瞭望台 360度觀景線",
                 "shade": 45, "rain_safe": False, "base_crowd": 28,
+                "slope": "陡坡攀升", "has_nursery": False,
                 "length": "3.8 公里", "time": "70 分鐘",
                 "origin": "113.5615,22.1568", "destination": "113.5650,22.1610", "dest_name": "大潭山觀察台",
                 "desc": "【晴朗涼爽專屬推薦】直達山頂瞭望台，視野無遮擋，俯瞰路氹金光大道全景。"
@@ -381,22 +390,25 @@ elif st.session_state.current_page == "routes":
                 "id": 201, "target_condition": "rain",
                 "name": "🗼 東望洋燈塔與防空洞展館歷史避雨線",
                 "shade": 60, "rain_safe": True, "base_crowd": 30,
+                "slope": "平緩道路", "has_nursery": True,
                 "length": "2.5 公里", "time": "50 分鐘",
                 "origin": "113.5482,22.1965", "destination": "113.5498,22.1968", "dest_name": "東望洋燈塔",
-                "desc": "【下雨天氣專屬推薦】途經松山防空洞展館，可隨時入內避雨參觀。"
+                "desc": "【下雨天氣專屬推薦】途經松山防空洞展館，可隨時入內避雨，展館內設有母嬰設施。"
             },
             {
                 "id": 202, "target_condition": "hot",
                 "name": "🌿 松山公園高樹蔭綠亭遮陽漫步線",
                 "shade": 92, "rain_safe": True, "base_crowd": 20,
+                "slope": "平緩道路", "has_nursery": True,
                 "length": "1.2 公里", "time": "25 分鐘",
                 "origin": "113.5482,22.1965", "destination": "113.5488,22.1972", "dest_name": "松山公園",
-                "desc": "【高溫/強紫外線專屬推薦】全線密集高大榕樹掩映，涼亭多且設有歇腳茶座。"
+                "desc": "【高溫/強紫外線專屬推薦】全線密集高大榕樹掩映，公園洗手間配備母嬰護理台。"
             },
             {
                 "id": 203, "target_condition": "cool",
                 "name": "🏃‍♂️ 松山環山防滑塑膠跑道親子健身線",
                 "shade": 75, "rain_safe": False, "base_crowd": 55,
+                "slope": "中等緩坡", "has_nursery": False,
                 "length": "1.7 公里", "time": "30 分鐘",
                 "origin": "113.5482,22.1965", "destination": "113.5490,22.1980", "dest_name": "松山跑步徑",
                 "desc": "【晴朗涼爽專屬推薦】澳門熱門運動步道，設有兒童遊樂場與休閒設施。"
@@ -407,22 +419,25 @@ elif st.session_state.current_page == "routes":
                 "id": 301, "target_condition": "rain",
                 "name": "🛶 黑沙水庫水上單車風雨亭線",
                 "shade": 70, "rain_safe": True, "base_crowd": 18,
+                "slope": "平緩道路", "has_nursery": True,
                 "length": "1.0 公里", "time": "25 分鐘",
                 "origin": "113.5682,22.1245", "destination": "113.5688,22.1250", "dest_name": "黑沙水庫水上單車",
-                "desc": "【下雨天氣專屬推薦】設有大型景觀避雨亭與無障礙連廊設施。"
+                "desc": "【下雨天氣專屬推薦】設有大型景觀避雨亭，遊客中心內設有育嬰室設施。"
             },
             {
                 "id": 302, "target_condition": "hot",
                 "name": "💧 黑沙水庫吊橋環湖高蔭氧吧線",
                 "shade": 94, "rain_safe": False, "base_crowd": 10,
+                "slope": "中等緩坡", "has_nursery": True,
                 "length": "1.5 公里", "time": "35 分鐘",
                 "origin": "113.5682,22.1245", "destination": "113.5695,22.1255", "dest_name": "黑沙水庫郊野公園",
-                "desc": "【高溫/強紫外線專屬推薦】濃密樹冠覆蓋湖畔步道，涼爽宜人。"
+                "desc": "【高溫/強紫外線專屬推薦】濃密樹冠覆蓋湖畔步道，公園服務站備有母嬰室。"
             },
             {
                 "id": 303, "target_condition": "cool",
                 "name": "🌲 水庫後山原生植物科普攬勝線",
                 "shade": 60, "rain_safe": False, "base_crowd": 8,
+                "slope": "陡坡攀升", "has_nursery": False,
                 "length": "2.0 公里", "time": "45 分鐘",
                 "origin": "113.5682,22.1245", "destination": "113.5700,22.1260", "dest_name": "黑沙水庫植物園",
                 "desc": "【晴朗涼爽專屬推薦】視野良好，沿途標註澳門原生植物科普牌。"
@@ -433,22 +448,25 @@ elif st.session_state.current_page == "routes":
                 "id": 401, "target_condition": "rain",
                 "name": "🌊 小潭山西灣大橋海景風雨涼亭線",
                 "shade": 80, "rain_safe": True, "base_crowd": 14,
+                "slope": "平緩道路", "has_nursery": True,
                 "length": "2.3 公里", "time": "45 分鐘",
                 "origin": "113.5435,22.1521", "destination": "113.5445,22.1530", "dest_name": "小潭山2000環山徑",
-                "desc": "【下雨天氣專屬推薦】沿途涼亭與防雨歇腳點極多，雨天行走無憂。"
+                "desc": "【下雨天氣專屬推薦】沿途涼亭極多，設有無障礙洗手間及母嬰換尿布台。"
             },
             {
                 "id": 402, "target_condition": "hot",
                 "name": "👶 小潭山無障礙坡道高蔭林陰線",
                 "shade": 91, "rain_safe": True, "base_crowd": 9,
+                "slope": "平緩 (無障礙坡道)", "has_nursery": True,
                 "length": "1.6 公里", "time": "30 分鐘",
                 "origin": "113.5435,22.1521", "destination": "113.5440,22.1528", "dest_name": "小潭山休閒花園",
-                "desc": "【高溫/強紫外線專屬推薦】樹蔭極高，坡道平緩，帶嬰兒車極度舒適。"
+                "desc": "【高溫/強紫外線專屬推薦】樹蔭極高，坡道平緩，帶嬰兒車極度舒適，設母嬰室。"
             },
             {
                 "id": 403, "target_condition": "cool",
                 "name": "⛰️ 小潭山山頂天際線視野縱走線",
                 "shade": 50, "rain_safe": False, "base_crowd": 22,
+                "slope": "陡坡攀升", "has_nursery": False,
                 "length": "3.5 公里", "time": "60 分鐘",
                 "origin": "113.5435,22.1521", "destination": "113.5460,22.1545", "dest_name": "小潭山山頂觀景點",
                 "desc": "【晴朗涼爽專屬推薦】遠眺澳門半島高樓天際線，景致開闊。"
@@ -459,6 +477,7 @@ elif st.session_state.current_page == "routes":
                 "id": 501, "target_condition": "rain",
                 "name": "⛩️ 榕樹灣風雨亭連廊避雨線",
                 "shade": 85, "rain_safe": True, "base_crowd": 15,
+                "slope": "平緩道路", "has_nursery": False,
                 "length": "1.0 公里", "time": "25 分鐘",
                 "origin": "113.5712,22.1098", "destination": "113.5718,22.1102", "dest_name": "榕樹灣風雨亭",
                 "desc": "【下雨天氣專屬推薦】大榕樹群與涼亭避風避雨，安全性高。"
@@ -467,14 +486,16 @@ elif st.session_state.current_page == "routes":
                 "id": 502, "target_condition": "hot",
                 "name": "🗿 龍爪角竹灣高蔭避暑步道",
                 "shade": 88, "rain_safe": False, "base_crowd": 25,
+                "slope": "中等緩坡", "has_nursery": True,
                 "length": "1.8 公里", "time": "45 分鐘",
                 "origin": "113.5712,22.1098", "destination": "113.5730,22.1120", "dest_name": "竹灣豪園觀景台",
-                "desc": "【高溫/強紫外線專屬推薦】竹林與綠樹擋住海面烈日暴曬。"
+                "desc": "【高溫/強紫外線專屬推薦】竹林與綠樹擋住海面烈日暴曬，起點設有母嬰設施。"
             },
             {
                 "id": 503, "target_condition": "cool",
                 "name": "🌊 龍爪角奇石聽濤海岸地質線",
                 "shade": 30, "rain_safe": False, "base_crowd": 60,
+                "slope": "中等緩坡 (部分礁石)", "has_nursery": False,
                 "length": "1.2 公里", "time": "40 分鐘",
                 "origin": "113.5712,22.1098", "destination": "113.5725,22.1110", "dest_name": "龍爪角海岸徑",
                 "desc": "【晴朗涼爽專屬推薦】沿海奇石，聽濤觀海，晴天無浪時極致震撼。"
@@ -485,22 +506,25 @@ elif st.session_state.current_page == "routes":
                 "id": 601, "target_condition": "rain",
                 "name": "🌺 望廈山溫室展館室內避雨線",
                 "shade": 95, "rain_safe": True, "base_crowd": 12,
+                "slope": "平緩道路", "has_nursery": True,
                 "length": "0.8 公里", "time": "20 分鐘",
                 "origin": "113.5488,22.2062", "destination": "113.5490,22.2065", "dest_name": "望廈山溫室展館",
-                "desc": "【下雨天氣專屬推薦】室內溫室展示花卉，下雨天完全不濕身。"
+                "desc": "【下雨天氣專屬推薦】室內溫室展示花卉，下雨天不濕身，設有標準母嬰室。"
             },
             {
                 "id": 602, "target_condition": "hot",
                 "name": "🌿 望廈山茂密綠林避暑步道",
                 "shade": 92, "rain_safe": True, "base_crowd": 16,
+                "slope": "平緩道路", "has_nursery": True,
                 "length": "1.1 公里", "time": "30 分鐘",
                 "origin": "113.5488,22.2062", "destination": "113.5495,22.2070", "dest_name": "望廈山市政公園",
-                "desc": "【高溫/強紫外線專屬推薦】市區高覆蓋天然綠肺遮陽。"
+                "desc": "【高溫/強紫外線專屬推薦】市區高覆蓋天然綠肺遮陽，公園處備有母嬰育嬰間。"
             },
             {
                 "id": 603, "target_condition": "cool",
                 "name": "🏃‍♂️ 松山環山防滑塑膠跑道親子健身線",
                 "shade": 75, "rain_safe": False, "base_crowd": 55,
+                "slope": "中等緩坡", "has_nursery": False,
                 "length": "1.7 公里", "time": "30 分鐘",
                 "origin": "113.5482,22.1965", "destination": "113.5490,22.1980", "dest_name": "松山跑步徑",
                 "desc": "【晴朗涼爽專屬推薦】澳門熱門運動步道，設有兒童遊樂場與休閒設施。"
@@ -508,7 +532,13 @@ elif st.session_state.current_page == "routes":
         ]
     }
 
-    selected_dest = st.selectbox("📍 請選擇澳門目的地：", list(macau_18_unique_destinations.keys()))
+    col_sel1, col_sel2 = st.columns([2, 1])
+    with col_sel1:
+        selected_dest = st.selectbox("📍 請選擇澳門目的地：", list(macau_18_unique_destinations.keys()))
+    with col_sel2:
+        selected_slope = st.selectbox("🏔️ 坡度篩選：", ["全部坡度", "平緩 (無障礙/推車友善)", "中等緩坡", "陡坡攀升"])
+
+    need_nursery = st.checkbox("🍼 僅顯示設有母嬰室 / 育嬰設施之路線", value=False)
 
     cur_temp = st.session_state.global_temp
     cur_uv = st.session_state.global_uv
@@ -524,7 +554,21 @@ elif st.session_state.current_page == "routes":
     else:
         st.success("🌤️ 當前天氣晴朗宜人！系統已為您優先推薦【山頂展望 / 景觀視野路線】。")
 
+    filtered_routes = []
     for r in dest_routes:
+        # 母嬰室過濾
+        if need_nursery and not r["has_nursery"]:
+            continue
+            
+        # 坡度過濾
+        if selected_slope != "全部坡度":
+            if "平緩" in selected_slope and "平緩" not in r["slope"]:
+                continue
+            elif "中等" in selected_slope and "中等" not in r["slope"]:
+                continue
+            elif "陡坡" in selected_slope and "陡坡" not in r["slope"]:
+                continue
+
         live_crowd_delta = int(math.sin(time_seed + r["id"]) * 5)
         r["live_crowd"] = max(3, r["base_crowd"] + live_crowd_delta)
 
@@ -553,27 +597,32 @@ elif st.session_state.current_page == "routes":
                 score = 55.0
 
         r["dynamic_score"] = round(score, 1)
+        filtered_routes.append(r)
 
-    sorted_dest_routes = sorted(dest_routes, key=lambda x: x["dynamic_score"], reverse=True)
+    sorted_dest_routes = sorted(filtered_routes, key=lambda x: x["dynamic_score"], reverse=True)
 
-    st.markdown(f"#### 🎯 當前氣象 (氣溫 {cur_temp:.1f}°C / UV {cur_uv:.1f} / 是否降雨：{'是' if is_rain else '否'}) 推薦路線：")
+    st.markdown(f"#### 🎯 當前條件篩選推薦路線 ({len(sorted_dest_routes)} 條)：")
+
+    if not sorted_dest_routes:
+        st.warning("⚠️ 目前選取的目的地無符合坡度或母嬰室篩選條件之路線，請嘗試放寬篩選條件。")
 
     for idx, route in enumerate(sorted_dest_routes):
         is_best = (idx == 0)
-        badge = '<span class="badge-star">🌟 當前天氣最佳推薦</span>' if is_best else f'<span class="badge-green">適應分: {route["dynamic_score"]}</span>'
+        badge = '<span class="badge-star">🌟 當前最佳推薦</span>' if is_best else f'<span class="badge-green">適應分: {route["dynamic_score"]}</span>'
+        nursery_badge = '<span class="badge-feature">🍼 設母嬰室</span>' if route["has_nursery"] else ''
 
         nav_url = f"https://uri.amap.com/navigation?from={route['origin']},Start&to={route['destination']},{urllib.parse.quote(route['dest_name'])}&mode=walk&policy=1&src=mypage&callnative=1"
 
         st.markdown(f"""
         <div class="card" style="{'border-left:6px solid #E65100; background-color:#FFFDE7;' if is_best else ''}">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <h4 style="margin:0; color:#1B5E20; font-size:1.15rem;">{route['name']}</h4>
+                <h4 style="margin:0; color:#1B5E20; font-size:1.15rem;">{route['name']} {nursery_badge}</h4>
                 {badge}
             </div>
             <p style="font-size:0.88rem; color:#555; margin-bottom:8px;">{route['desc']}</p>
             <div style="font-size:0.83rem; color:#333; line-height:1.6; margin-bottom:12px;">
-                <b>📏 長度：</b> {route['length']} | <b>⏱️ 時間：</b> {route['time']} | <b>🌳 樹蔭：</b> {route['shade']}%<br>
-                <b>🚶‍♂️ 實時人數：</b> <b style="color:#EF6C00;">{route['live_crowd']} 人</b>
+                <b>📏 長度：</b> {route['length']} | <b>⏱️ 時間：</b> {route['time']} | <b>⛰️ 坡度：</b> <b style="color:#0277BD;">{route['slope']}</b><br>
+                <b>🌳 樹蔭：</b> {route['shade']}% | <b>🚶‍♂️ 實時人數：</b> <b style="color:#EF6C00;">{route['live_crowd']} 人</b>
             </div>
             <a href="{nav_url}" target="_blank" style="text-decoration:none;">
                 <div style="
@@ -752,7 +801,7 @@ elif st.session_state.current_page == "audio":
     st.components.v1.html(audio_js, height=75)
 
 
-# ==================== 9. 功能頁面 4：🚨 全國 SOS 緊急求救專區 (一鍵複製簡訊 + 自動識別地區專線) ====================
+# ==================== 9. 功能頁面 4：🚨 一鍵求救專區 (一鍵複製簡訊 + 自動識別地區專線) ====================
 elif st.session_state.current_page == "sos":
     st.markdown('<div class="back-btn">', unsafe_allow_html=True)
     if st.button("← 返回主頁面", key="back_sos"):
@@ -762,7 +811,7 @@ elif st.session_state.current_page == "sos":
 
     st.markdown("""
     <div class="card" style="border-left:5px solid #C62828; background-color:#FFEBEE;">
-        <h3 style="margin-top:0px; color:#B71C1C;">🚨 全國緊急求救與精準 GPS 定位通報</h3>
+        <h3 style="margin-top:0px; color:#B71C1C;">🚨 一鍵求救與精準 GPS 定位通報</h3>
         <p style="font-size:0.9rem; color:#C62828; margin-bottom:0;">如在戶外遇到緊急情況，請保持冷靜。系統已自動獲取您的 GPS 並比對地區緊急求救熱線：</p>
     </div>
     """, unsafe_allow_html=True)
@@ -770,7 +819,7 @@ elif st.session_state.current_page == "sos":
     sos_js_template = """
     <div style="text-align:center; padding:10px; background-color:#FFEBEE; border-radius:10px; border:1px solid #FFCDD2; margin-bottom:12px;">
         <div id="sosGpsStatus" style="font-size:0.9rem; color:#C62828; font-weight:bold; margin-bottom:6px;">
-            📡 正在感應當前衛星精確 SOS GPS 座標...
+            📡 正在感應當前衛星精確一鍵求救 GPS 座標...
         </div>
         <div id="regionNotice" style="font-size:0.85rem; color:#B71C1C; font-weight:bold;"></div>
     </div>
@@ -812,7 +861,7 @@ elif st.session_state.current_page == "sos":
     <script>
         function generateSosText(lat, lon) {
             var nick = "__USER_NICK__";
-            return "【🚨 SOS 全國緊急求救通報】\\n" +
+            return "【🚨 SOS 一鍵求救通報】\\n" +
                    "求救人暱稱：" + nick + "\\n" +
                    "當前精確 GPS 座標：緯度 " + lat.toFixed(5) + ", 經度 " + lon.toFixed(5) + "\\n" +
                    "地圖位置導航：https://maps.google.com/?q=" + lat.toFixed(5) + "," + lon.toFixed(5) + "\\n" +

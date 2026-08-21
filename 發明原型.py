@@ -1,6 +1,6 @@
-fe# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
-🍀 絲野仙蹤 (Eco-Family) - 澳門親子綠色呼吸智慧康旅導航系統
+🍀 絲野仙蹤 (Eco-Family) - 親子綠色呼吸智慧康旅導航系統
 """
 
 import streamlit as st
@@ -47,7 +47,7 @@ if "lat" in query_params and "lon" in query_params:
     except ValueError:
         pass
 
-# 使用者 GPS 座標 (預設澳門座標)
+# 使用者 GPS 座標 (預設座標)
 if "my_lat" not in st.session_state:
     st.session_state.my_lat = 22.1568
 if "my_lon" not in st.session_state:
@@ -248,7 +248,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 
-# ==================== 3. 澳門氣象實時數據連線 ====================
+# ==================== 3. 氣象實時數據連線 ====================
 def update_weather_and_aqi():
     if not st.session_state.override_weather:
         try:
@@ -284,7 +284,7 @@ with col_head1:
     st.markdown("""
     <div>
         <div class="brand-title" style="font-size:1.55rem; font-weight:bold; color:#1B5E20;">🍀 絲野仙蹤 Eco-Family</div>
-        <div class="brand-sub" style="font-size:0.8rem; color:#666;">澳門親子綠色呼吸智慧隨行助手</div>
+        <div class="brand-sub" style="font-size:0.8rem; color:#666;">親子綠色呼吸智慧隨行助手</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -348,8 +348,8 @@ elif st.session_state.current_page == "routes":
             st.session_state.global_pm10 = st.slider("🌫️ 懸浮微粒 (PM10)", 10.0, 200.0, float(st.session_state.global_pm10), key="r_pm10")
             st.session_state.global_rain = st.checkbox("🌧️ 是否模擬降雨", value=st.session_state.global_rain, key="r_rain")
 
-    weather_tag_html = '<span class="badge-sim">🛠️ 手動模擬數據中</span>' if st.session_state.override_weather else '<span style="color:#2E7D32; font-size:0.85rem; font-weight:bold;">(📡 澳門實時連線)</span>'
-    st.markdown(f"##### ☁️ 澳門當前氣象數據 {weather_tag_html}", unsafe_allow_html=True)
+    weather_tag_html = '<span class="badge-sim">🛠️ 手動模擬數據中</span>' if st.session_state.override_weather else '<span style="color:#2E7D32; font-size:0.85rem; font-weight:bold;">(📡 實時連線)</span>'
+    st.markdown(f"##### ☁️ 當前氣象數據 {weather_tag_html}", unsafe_allow_html=True)
 
     r1, r2, r3, r4 = st.columns(4)
     with r1:
@@ -364,16 +364,15 @@ elif st.session_state.current_page == "routes":
 
     st.write("")
 
-    # 已將氣候更換為氣象
     st.markdown("""
     <div class="card">
-        <h3 style="margin-top:0px; color:#1E5631;">🗺️ 澳門目的地與氣象/設施適應路線規劃</h3>
+        <h3 style="margin-top:0px; color:#1E5631;">🗺️ 目的地與氣象/設施適應路線規劃</h3>
         <p style="font-size:0.9rem; margin-bottom:0;">選擇目的地並可依據<b>坡度需求、母嬰室設施與當前氣象</b>自動調整評分與推薦：</p>
     </div>
     """, unsafe_allow_html=True)
 
-    macau_18_unique_destinations = {
-        "大潭山步行徑 (氹仔島)": [
+    unique_destinations = {
+        "大潭山步行徑 (氹仔區)": [
             {
                 "id": 101, "target_condition": "rain",
                 "name": "🌲 大潭山斜行升降機風雨遮陽主線",
@@ -399,10 +398,10 @@ elif st.session_state.current_page == "routes":
                 "slope": "陡坡攀升", "has_nursery": False,
                 "length": "3.8 公里", "time": "70 分鐘",
                 "origin": "113.5615,22.1568", "destination": "113.5650,22.1610", "dest_name": "大潭山觀察台",
-                "desc": "【晴朗涼爽專屬推薦】直達山頂瞭望台，視野無遮擋，俯瞰路氹金光大道全景。"
+                "desc": "【晴朗涼爽專屬推薦】直達山頂瞭望台，視野無遮擋，俯瞰全景。"
             }
         ],
-        "松山 (東望洋) 健康徑 (澳門半島)": [
+        "松山 (東望洋) 健康徑": [
             {
                 "id": 201, "target_condition": "rain",
                 "name": "🗼 東望洋燈塔與防空洞展館歷史避雨線",
@@ -428,10 +427,10 @@ elif st.session_state.current_page == "routes":
                 "slope": "中等緩坡", "has_nursery": False,
                 "length": "1.7 公里", "time": "30 分鐘",
                 "origin": "113.5482,22.1965", "destination": "113.5490,22.1980", "dest_name": "松山跑步徑",
-                "desc": "【晴朗涼爽專屬推薦】澳門熱門運動步道，設有兒童遊樂場與休閒設施。"
+                "desc": "【晴朗涼爽專屬推薦】熱門運動步道，設有兒童遊樂場與休閒設施。"
             }
         ],
-        "路環黑沙水庫健康徑 (路環島)": [
+        "黑沙水庫健康徑 (路環區)": [
             {
                 "id": 301, "target_condition": "rain",
                 "name": "🛶 黑沙水庫水上單車風雨亭線",
@@ -457,10 +456,10 @@ elif st.session_state.current_page == "routes":
                 "slope": "陡坡攀升", "has_nursery": False,
                 "length": "2.0 公里", "time": "45 分鐘",
                 "origin": "113.5682,22.1245", "destination": "113.5700,22.1260", "dest_name": "黑沙水庫植物園",
-                "desc": "【晴朗涼爽專屬推薦】視野良好，沿途標註澳門原生植物科普牌。"
+                "desc": "【晴朗涼爽專屬推薦】視野良好，沿途標註原生植物科普牌。"
             }
         ],
-        "小潭山 2000 環山徑 (氹仔島)": [
+        "小潭山 2000 環山徑 (氹仔區)": [
             {
                 "id": 401, "target_condition": "rain",
                 "name": "🌊 小潭山西灣大橋海景風雨涼亭線",
@@ -486,10 +485,10 @@ elif st.session_state.current_page == "routes":
                 "slope": "陡坡攀升", "has_nursery": False,
                 "length": "3.5 公里", "time": "60 分鐘",
                 "origin": "113.5435,22.1521", "destination": "113.5460,22.1545", "dest_name": "小潭山山頂觀景點",
-                "desc": "【晴朗涼爽專屬推薦】遠眺澳門半島高樓天際線，景致開闊。"
+                "desc": "【晴朗涼爽專屬推薦】遠眺城市天際線，景致開闊。"
             }
         ],
-        "黑沙龍爪角海岸徑 (路環島)": [
+        "黑沙龍爪角海岸徑 (路環區)": [
             {
                 "id": 501, "target_condition": "rain",
                 "name": "⛩️ 榕樹灣風雨亭連廊避雨線",
@@ -518,7 +517,7 @@ elif st.session_state.current_page == "routes":
                 "desc": "【晴朗涼爽專屬推薦】沿海奇石，聽濤觀海，晴天無浪時極致震撼。"
             }
         ],
-        "望廈山市政公園步道 (澳門半島)": [
+        "望廈山市政公園步道": [
             {
                 "id": 601, "target_condition": "rain",
                 "name": "🌺 望廈山溫室展館室內避雨線",
@@ -544,14 +543,14 @@ elif st.session_state.current_page == "routes":
                 "slope": "中等緩坡", "has_nursery": False,
                 "length": "1.5 公里", "time": "35 分鐘",
                 "origin": "113.5488,22.2062", "destination": "113.5500,22.2075", "dest_name": "望廈砲台",
-                "desc": "【晴朗涼爽專屬推薦】澳門歷史文化古蹟步道，展望澳門北區城市景觀。"
+                "desc": "【晴朗涼爽專屬推薦】歷史文化古蹟步道，展望北區城市景觀。"
             }
         ]
     }
 
     col_sel1, col_sel2 = st.columns([2, 1])
     with col_sel1:
-        selected_dest = st.selectbox("📍 請選擇澳門目的地：", list(macau_18_unique_destinations.keys()))
+        selected_dest = st.selectbox("📍 請選擇目的地：", list(unique_destinations.keys()))
     with col_sel2:
         selected_slope = st.selectbox("🏔️ 坡度篩選：", ["全部坡度", "平緩 (無障礙/推車友善)", "中等緩坡", "陡坡攀升"])
 
@@ -561,10 +560,9 @@ elif st.session_state.current_page == "routes":
     cur_uv = st.session_state.global_uv
     is_rain = st.session_state.global_rain
 
-    dest_routes = macau_18_unique_destinations[selected_dest]
+    dest_routes = unique_destinations[selected_dest]
     time_seed = int(time.time() / 8)
 
-    # 已將氣候更換為氣象
     if is_rain:
         st.info("🌧️ 檢測到降雨氣象！系統已為您優先推薦【風雨遮陽 / 室內避雨路線】。")
     elif cur_temp >= 26.0 or cur_uv >= 2.5:
@@ -660,8 +658,8 @@ elif st.session_state.current_page == "gear":
             st.session_state.global_pm10 = st.slider("🌫️ 懸浮微粒 (PM10)", 10.0, 200.0, float(st.session_state.global_pm10), key="g_pm10")
             st.session_state.global_rain = st.checkbox("🌧️ 是否模擬降雨", value=st.session_state.global_rain, key="g_rain")
 
-    weather_tag_html = '<span class="badge-sim">🛠️ 手動模擬數據中</span>' if st.session_state.override_weather else '<span style="color:#2E7D32; font-size:0.85rem; font-weight:bold;">(📡 澳門實時連線)</span>'
-    st.markdown(f"##### ☁️ 澳門當前氣象數據 {weather_tag_html}", unsafe_allow_html=True)
+    weather_tag_html = '<span class="badge-sim">🛠️ 手動模擬數據中</span>' if st.session_state.override_weather else '<span style="color:#2E7D32; font-size:0.85rem; font-weight:bold;">(📡 實時連線)</span>'
+    st.markdown(f"##### ☁️ 當前氣象數據 {weather_tag_html}", unsafe_allow_html=True)
 
     r1, r2, r3, r4 = st.columns(4)
     with r1:
@@ -887,18 +885,18 @@ elif st.session_state.current_page == "sos":
         }
 
         function updateRegionPhone(lat, lon) {
-            var isMacau = (lat >= 22.10 && lat <= 22.22 && lon >= 113.50 && lon <= 113.60);
-            var isHK = (lat >= 22.15 && lat <= 22.58 && lon >= 113.80 && lon <= 114.40);
+            var isRegionA = (lat >= 22.10 && lat <= 22.22 && lon >= 113.50 && lon <= 113.60);
+            var isRegionB = (lat >= 22.15 && lat <= 22.58 && lon >= 113.80 && lon <= 114.40);
 
-            if (isMacau) {
-                document.getElementById("regionNotice").innerHTML = "📍 定位顯示您在【澳門地區】，推薦優先撥打 999 或 110/119";
+            if (isRegionA) {
+                document.getElementById("regionNotice").innerHTML = "📍 推薦優先撥打 999 或 110/119";
                 document.getElementById("pBtn1").href = "tel:999";
-                document.getElementById("pBtn1").children[0].innerText = "📞 999 澳門報案";
+                document.getElementById("pBtn1").children[0].innerText = "📞 999 報案";
                 document.getElementById("pBtn1").children[0].style.backgroundColor = "#0277BD";
-            } else if (isHK) {
-                document.getElementById("regionNotice").innerHTML = "📍 定位顯示您在【香港地區】，推薦優先撥打 999";
+            } else if (isRegionB) {
+                document.getElementById("regionNotice").innerHTML = "📍 推薦優先撥打 999";
                 document.getElementById("pBtn1").href = "tel:999";
-                document.getElementById("pBtn1").children[0].innerText = "📞 999 香港求助";
+                document.getElementById("pBtn1").children[0].innerText = "📞 999 求助";
                 document.getElementById("pBtn1").children[0].style.backgroundColor = "#0277BD";
             } else {
                 document.getElementById("regionNotice").innerHTML = "📍 全國地區預設緊急熱線：110 (公安) / 119 (消防) / 120 (醫療)";

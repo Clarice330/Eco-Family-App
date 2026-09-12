@@ -2,7 +2,7 @@
 """
 🍀 絲野仙蹤 (Eco-Family) - 親子綠色呼吸智慧隨行助手
 標準配置：3 大功能 (智慧路線規劃、隨行裝備、親子生態動植物識別外連)
-+ 2 右上角小功能 (🔊 驅蟲, 🚨 一鍵求救)
++ 2 右上角小功能正方形按鈕 (🔊 驅蟲, 🚨 一鍵求救)
 + 頂部「👵 關愛大字體模式」開關
 + 前兩項核心功能皆含「🌤️ 手動氣象模擬測試面板」
 """
@@ -94,26 +94,33 @@ st.markdown(f"""
         display: none;
     }}
 
-    /* 強制頂部欄在手機版螢幕不換行、橫向並排 */
+    /* 強制頂部欄在所有手機螢幕下都橫向緊湊排列，絕不換行或推至螢幕外 */
     div[data-testid="stHorizontalBlock"]:first-of-type {{
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
         align-items: center !important;
         justify-content: space-between !important;
-        gap: 6px !important;
+        gap: 4px !important;
+        width: 100% !important;
     }}
 
-    div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"] {{
-        width: auto !important;
-        min-width: 0 !important;
+    div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"]:nth-child(1) {{
         flex: 1 1 auto !important;
+        min-width: 0 !important;
+    }}
+
+    div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"]:nth-child(2),
+    div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"]:nth-child(3) {{
+        flex: 0 0 auto !important;
+        width: 42px !important;
+        min-width: 42px !important;
     }}
 
     /* 按鈕容器全寬調整 */
     div[data-testid="stButton"] {{
         width: 100% !important;
-        margin: 0 0 16px 0 !important;
+        margin: 0 !important;
         padding: 0 !important;
         box-sizing: border-box !important;
     }}
@@ -140,7 +147,7 @@ st.markdown(f"""
         word-break: break-word !important;
     }}
 
-    /* 強制鎖定按鈕內部所有層級 (p, span, div) 的字體大小與行高 */
+    /* 強制鎖定大按鈕內部所有層級 (p, span, div) 的字體大小與行高 */
     div[data-testid="stButton"] > button,
     div[data-testid="stButton"] > button *,
     div[data-testid="stButton"] > button p,
@@ -161,47 +168,52 @@ st.markdown(f"""
         transform: translateY(-2px) !important;
     }}
 
-    /* 右上角小功能專屬精巧樣式 (固定 38px 高度，手機方向不變大) */
-    .top-right-badge div[data-testid="stButton"] {{
+    /* 右上角小功能專屬正方形小按鈕 (42px x 42px) */
+    .top-square-btn div[data-testid="stButton"] {{
         margin: 0 !important;
+        width: 42px !important;
     }}
 
-    .top-right-badge div[data-testid="stButton"] > button {{
-        height: 38px !important;
-        min-height: 38px !important;
-        max-height: 38px !important;
-        border-radius: 10px !important;
+    .top-square-btn div[data-testid="stButton"] > button {{
+        width: 42px !important;
+        min-width: 42px !important;
+        max-width: 42px !important;
+        height: 42px !important;
+        min-height: 42px !important;
+        max-height: 42px !important;
+        border-radius: 12px !important;
         margin: 0 !important;
-        padding: 0 4px !important;
-        box-shadow: none !important;
+        padding: 0 !important;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.06) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }}
     
-    .top-right-audio div[data-testid="stButton"] > button {{
+    .top-square-audio div[data-testid="stButton"] > button {{
         background: #E8F5E9 !important;
         border: 1.5px solid #81C784 !important;
     }}
-    .top-right-audio div[data-testid="stButton"] > button,
-    .top-right-audio div[data-testid="stButton"] > button *,
-    .top-right-audio div[data-testid="stButton"] > button p,
-    .top-right-audio div[data-testid="stButton"] > button span {{
+    .top-square-audio div[data-testid="stButton"] > button,
+    .top-square-audio div[data-testid="stButton"] > button *,
+    .top-square-audio div[data-testid="stButton"] > button p,
+    .top-square-audio div[data-testid="stButton"] > button span {{
         color: #1B5E20 !important;
-        font-size: {"0.95rem" if is_elder else "0.78rem"} !important;
-        font-weight: bold !important;
-        white-space: nowrap !important;
+        font-size: 1.15rem !important;
+        line-height: 1 !important;
     }}
 
-    .top-right-sos div[data-testid="stButton"] > button {{
+    .top-square-sos div[data-testid="stButton"] > button {{
         background: #FFEBEE !important;
         border: 1.5px solid #E53935 !important;
     }}
-    .top-right-sos div[data-testid="stButton"] > button,
-    .top-right-sos div[data-testid="stButton"] > button *,
-    .top-right-sos div[data-testid="stButton"] > button p,
-    .top-right-sos div[data-testid="stButton"] > button span {{
+    .top-square-sos div[data-testid="stButton"] > button,
+    .top-square-sos div[data-testid="stButton"] > button *,
+    .top-square-sos div[data-testid="stButton"] > button p,
+    .top-square-sos div[data-testid="stButton"] > button span {{
         color: #C62828 !important;
-        font-size: {"0.95rem" if is_elder else "0.78rem"} !important;
-        font-weight: bold !important;
-        white-space: nowrap !important;
+        font-size: 1.15rem !important;
+        line-height: 1 !important;
     }}
 
     /* 內文卡片與內部文字放大樣式 */
@@ -348,41 +360,39 @@ def update_weather_and_aqi():
 
 update_weather_and_aqi()
 
-col_title, col_small_features = st.columns([1.1, 1.2])
+# 頂部列：左側標題，右側兩個小正方形按鈕
+col_title, col_audio_sq, col_sos_sq = st.columns([2.5, 0.5, 0.5])
 
 with col_title:
-    title_font_size = "1.3rem" if is_elder else "1.1rem"
-    sub_title_size = "0.85rem" if is_elder else "0.72rem"
+    title_font_size = "1.15rem" if is_elder else "1.05rem"
+    sub_title_size = "0.75rem" if is_elder else "0.68rem"
     st.markdown(f"""
-    <div style="text-align: left; padding: 0px;">
-        <div style="font-size: {title_font_size}; font-weight: 800; color: #1B5E20; letter-spacing: -0.5px; white-space: nowrap;">
+    <div style="text-align: left; padding: 0px; overflow: hidden;">
+        <div style="font-size: {title_font_size}; font-weight: 800; color: #1B5E20; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
             🍀 絲野仙蹤 Eco-Family
         </div>
-        <div style="font-size: {sub_title_size}; color: #2E7D32; margin-top: 1px; font-weight: 600; white-space: nowrap;">
+        <div style="font-size: {sub_title_size}; color: #2E7D32; margin-top: 1px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
             澳門親子綠色呼吸智慧隨行助手
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-with col_small_features:
-    sub_col1, sub_col2 = st.columns([1, 1])
-    
-    # 小功能 1：🔊 驅蟲狀態
-    with sub_col1:
-        st.markdown('<div class="top-right-badge top-right-audio">', unsafe_allow_html=True)
-        audio_status_text = "🔊 🟢 驅蟲" if st.session_state.audio_active else "🔊 🔴 驅蟲未啟"
-        if st.button(audio_status_text, key="btn_top_audio", use_container_width=True):
-            st.session_state.current_page = "audio"
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+# 小功能 1：正方形 🔊 驅蟲按鈕
+with col_audio_sq:
+    st.markdown('<div class="top-square-btn top-square-audio">', unsafe_allow_html=True)
+    audio_btn_label = "🔊🟢" if st.session_state.audio_active else "🔊🔴"
+    if st.button(audio_btn_label, key="btn_top_audio", help="驅蟲聲波設置"):
+        st.session_state.current_page = "audio"
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    # 小功能 2：🚨 一鍵求救按鈕
-    with sub_col2:
-        st.markdown('<div class="top-right-badge top-right-sos">', unsafe_allow_html=True)
-        if st.button("🚨 一鍵求救", key="btn_top_sos", use_container_width=True):
-            st.session_state.current_page = "sos"
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+# 小功能 2：正方形 🚨 求救按鈕
+with col_sos_sq:
+    st.markdown('<div class="top-square-btn top-square-sos">', unsafe_allow_html=True)
+    if st.button("🚨", key="btn_top_sos", help="一鍵求救與定位"):
+        st.session_state.current_page = "sos"
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # 關愛大字體模式開關
 elder_toggle = st.toggle("👵 關愛大字體模式", value=st.session_state.is_elder_mode, key="elder_mode_toggle")

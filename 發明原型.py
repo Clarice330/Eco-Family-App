@@ -295,10 +295,9 @@ def update_weather_and_aqi():
 update_weather_and_aqi()
 
 
-# ==================== 4. 頂部 Header (完全還原原名「驅蚊驅蟲」與「一鍵求救」) ====================
+# ==================== 4. 頂部 Header ====================
 audio_badge_text = "🟢 驅蚊驅蟲" if st.session_state.audio_active else "🔴 驅蚊驅蟲"
 
-# 彈性分配比例 [0.8, 1.2, 1.0] 確保在窄手機畫面上「驅蚊驅蟲」與「一鍵求救」均能一行完整顯示
 col_head1, col_head2, col_head3 = st.columns([0.8, 1.2, 1.0])
 
 with col_head1:
@@ -951,4 +950,4 @@ elif st.session_state.current_page == "sos":
 
     st.components.v1.html(rendered_sos_html, height=380)
 
-    st.info("💡 提示：點擊上方「一鍵複製」按鈕後，打開微信、簡訊或對講軟體貼上，即可將精確 GPS 座標發給救援隊！")xc
+    st.info("💡 提示：點擊上方「一鍵複製」按鈕後，打開微信、簡訊或對講軟體貼上，即可將精確 GPS 座標發給救援隊！")

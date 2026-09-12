@@ -35,7 +35,7 @@ if "global_aqi" not in st.session_state:
 if "override_weather" not in st.session_state:
     st.session_state.override_weather = False
 
-# 老年版/大字體模式開關 (預設為 False)
+# 新增：老年版/大字體模式開關 (預設為 False)
 if "is_elder_mode" not in st.session_state:
     st.session_state.is_elder_mode = False
 
@@ -75,54 +75,30 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ==================== 2. 全局 CSS 樣式美化 (手機極致適應版) ====================
-if st.session_state.is_elder_mode:
-    base_font_size = "1.25rem"   # 大字體基礎設定
-    btn_font_size = "1.6rem"     # 功能按鈕字體
-    btn_height = "80px"          # 功能按鈕高度
-    header_btn_font = "0.85rem"  # 頂部精簡按鈕在大字體模式下的適中字級
-    bottom_padding = "180px"     # 修復電腦端放大後下方被遮擋無法滾動到底的問題
-else:
-    base_font_size = "1.0rem"
-    btn_font_size = "1.35rem"
-    btn_height = "76px"
-    header_btn_font = "0.85rem"
-    bottom_padding = "60px"
+# ==================== 2. 全局 CSS 樣式美化 (大幅調大老年版字體與全站縮放) ====================
+zoom_val = "1.45" if st.session_state.is_elder_mode else "1.0"
+btn_font_size = "2.0rem" if st.session_state.is_elder_mode else "1.35rem"
+btn_height = "90px" if st.session_state.is_elder_mode else "76px"
 
 st.markdown(f"""
 <style>
-    /* 移除頂部外邊距與內邊距，節省空間 */
-    .block-container {{
-        padding-top: 0.5rem !important;
-        padding-bottom: {bottom_padding} !important;
-        padding-left: 0.2rem !important;
-        padding-right: 0.2rem !important;
-    }}
-
-    /* 1. 全局字體設定 */
-    html, body, .stApp {{
-        background-color: #F7FAF8 !important;
-        color: #2C3E50 !important;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
-        font-size: {base_font_size} !important;
-    }}
-
-    /* 2. 強制統一所有內建與自訂文字標籤 */
-    .stApp p, .stApp span, .stApp div, .stApp label, .stApp li {{
-        font-size: 100% !important;
+    /* 動態切換全站縮放比例 */
+    .stApp {{
+        background-color: #F7FAF8;
+        color: #2C3E50;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        
+        zoom: {zoom_val};
+        -moz-transform: scale({zoom_val});
+        -moz-transform-origin: top center;
     }}
     
-    .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6 {{
-        font-size: 1.25em !important;
-        font-weight: bold !important;
-    }}
-
-    /* 3. 隱藏原生側邊欄 */
+    /* 隱藏原生側邊欄 */
     section[data-testid="stSidebar"] {{
         display: none;
     }}
 
-    /* 4. 功能按鈕容器寬度與邊距 */
+    /* 功能按鈕容器寬度與邊距強制對齊 */
     div[data-testid="stButton"], div[data-testid="stLinkButton"] {{
         width: 100% !important;
         margin: 0 0 16px 0 !important;
@@ -130,7 +106,7 @@ st.markdown(f"""
         box-sizing: border-box !important;
     }}
 
-    /* 5. 功能按鈕外框本體 */
+    /* 功能按鈕樣式 - 強制字體充滿按鈕 */
     div[data-testid="stButton"] > button, div[data-testid="stLinkButton"] > a {{
         width: 100% !important;
         background-color: #FFFFFF !important;
@@ -142,6 +118,8 @@ st.markdown(f"""
         box-shadow: 0 4px 15px rgba(0,0,0,0.04) !important;
         border: 2px solid #E8F5E9 !important;
         text-align: center !important;
+        font-size: {btn_font_size} !important;
+        font-weight: 900 !important;
         margin: 0 0 16px 0 !important;
         padding: 0 8px !important;
         transition: all 0.2s ease-in-out !important;
@@ -151,14 +129,6 @@ st.markdown(f"""
         text-decoration: none !important;
         border-bottom: none !important;
         box-sizing: border-box !important;
-    }}
-
-    /* 6. 精準穿透按鈕內部標籤 */
-    div[data-testid="stButton"] > button *, 
-    div[data-testid="stLinkButton"] > a * {{
-        font-size: {btn_font_size} !important;
-        font-weight: 900 !important;
-        color: #1B5E20 !important;
         line-height: 1.1 !important;
     }}
 
@@ -171,55 +141,31 @@ st.markdown(f"""
         text-decoration: none !important;
     }}
 
-    /* 7. 強制 Column 不換行並完美並排 */
-    [data-testid="stHorizontalBlock"] {{
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        align-items: center !important;
-        gap: 2px !important;
-    }}
-    [data-testid="column"] {{
-        padding: 0px 1px !important;
-        min-width: 0px !important;
-        flex: 1 1 auto !important;
-    }}
-
-    div[data-testid="stElementContainer"] {{
-        margin-top: 0px !important;
-        margin-bottom: 0px !important;
-    }}
-
-    /* 8. 頂部 Header 求救與驅蟲按鈕精簡特化 */
-    .sos-header-btn button, .sos-header-btn button * {{
+    /* 頂部 Header 求救按鈕特化樣式 */
+    .sos-header-btn button {{
         background-color: #FFEBEE !important;
         color: #C62828 !important;
         border: 1.5px solid #FFCDD2 !important;
         font-weight: 800 !important;
         height: 38px !important;
         min-height: 38px !important;
-        font-size: {header_btn_font} !important;
+        font-size: 0.85rem !important;
         border-radius: 8px !important;
-        padding: 0px 4px !important;
+        padding: 4px 8px !important;
         margin-bottom: 0px !important;
-        white-space: nowrap !important;
-        word-break: keep-all !important;
-        flex-shrink: 0 !important;
     }}
 
-    .audio-header-btn button, .audio-header-btn button * {{
+    /* 頂部 Header 驅蟲按鈕樣式 */
+    .audio-header-btn button {{
         height: 38px !important;
         min-height: 38px !important;
-        font-size: {header_btn_font} !important;
+        font-size: 0.85rem !important;
         border-radius: 8px !important;
-        padding: 0px 4px !important;
+        padding: 4px 8px !important;
         margin-bottom: 0px !important;
-        white-space: nowrap !important;
-        word-break: keep-all !important;
-        flex-shrink: 0 !important;
     }}
 
-    /* 9. 經典卡片容器 */
+    /* 經典卡片容器 */
     .card {{
         background-color: #FFFFFF;
         border-radius: 12px;
@@ -232,57 +178,73 @@ st.markdown(f"""
         margin-bottom: 16px;
     }}
 
-    /* 10. 氣象數據小方盒 */
+    /* 氣象數據小方盒 */
     .metric-card {{
         background-color: #F1F8E9;
         border-radius: 10px;
-        padding: 8px 4px;
+        padding: 10px;
         text-align: center;
         border: 1px solid #C5E1A5;
         margin-bottom: 10px;
     }}
     .metric-title {{
-        font-size: 0.85em !important;
+        font-size: 0.82rem;
         color: #388E3C;
         font-weight: bold;
     }}
     .metric-value {{
-        font-size: 1.1em !important;
+        font-size: 1.35rem;
         font-weight: bold;
         color: #1B5E20;
     }}
 
-    /* 11. 標籤 Badges */
-    .badge-green, .badge-star, .badge-sim, .badge-feature {{
-        display: inline-block;
+    /* 標籤 Badges */
+    .badge-green {{
+        background-color: #2E7D32;
+        color: white;
         padding: 4px 10px;
-        border-radius: 8px;
-        font-size: 0.85em !important;
+        border-radius: 10px;
+        font-size: 0.8rem;
         font-weight: bold;
     }}
-    .badge-green {{ background-color: #2E7D32; color: white; }}
-    .badge-star {{ background-color: #E65100; color: white; }}
-    .badge-sim {{ background-color: #F57F17; color: white; }}
-    .badge-feature {{ background-color: #0277BD; color: white; margin-left: 4px; }}
+    .badge-star {{
+        background-color: #E65100;
+        color: white;
+        padding: 4px 10px;
+        border-radius: 10px;
+        font-size: 0.8rem;
+        font-weight: bold;
+    }}
+    .badge-sim {{
+        background-color: #F57F17;
+        color: white;
+        padding: 3px 8px;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: bold;
+    }}
+    .badge-feature {{
+        background-color: #0277BD;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-size: 0.78rem;
+        font-weight: bold;
+        margin-left: 4px;
+    }}
 
-    /* 12. 返回按鈕樣式 */
-    .back-btn button, .back-btn button * {{
+    /* 返回按鈕樣式 */
+    .back-btn button {{
         background-color: #E8F5E9 !important;
         color: #1B5E20 !important;
         font-weight: bold !important;
         padding: 8px 16px !important;
-        font-size: 1.1rem !important;
+        font-size: 0.95rem !important;
         border-radius: 8px !important;
         border: 1px solid #C8E6C9 !important;
         margin-bottom: 16px !important;
         height: auto !important;
         min-height: auto !important;
-    }}
-
-    /* 13. Streamlit 原生輸入框、核取方塊、選單文字統一放大 */
-    .stCheckbox label p, .stRadio label p, .stSelectbox label p, .stMultiSelect label p {{
-        font-size: 1.1em !important;
-        font-weight: 600 !important;
     }}
 </style>
 """, unsafe_allow_html=True)
@@ -315,17 +277,16 @@ def update_weather_and_aqi():
 update_weather_and_aqi()
 
 
-# ==================== 4. 頂部 Header (簡短文字：標誌化 2 字設計) ====================
-audio_badge_text = "🟢 驅蟲" if st.session_state.audio_active else "🔴 驅蟲"
+# ==================== 4. 頂部 Header ====================
+audio_badge_text = "🟢 驅蟲運作" if st.session_state.audio_active else "🔴 驅蟲未啟"
 
-# 欄位分配：左側 Logo 佔 1.1，中間驅蟲佔 1.0，右側求救佔 1.0
-col_head1, col_head2, col_head3 = st.columns([1.1, 1.0, 1.0])
+col_head1, col_head2, col_head3 = st.columns([1.5, 0.9, 0.9])
 
 with col_head1:
     st.markdown("""
     <div>
-        <div style="font-size:0.88em; font-weight:bold; color:#1B5E20; white-space:nowrap; line-height:1.1;">🍀 絲野仙蹤</div>
-        <div style="font-size:0.62em; color:#666; white-space:nowrap; line-height:1.1;">智慧隨行助手</div>
+        <div class="brand-title" style="font-size:1.55rem; font-weight:bold; color:#1B5E20;">🍀 絲野仙蹤 Eco-Family</div>
+        <div class="brand-sub" style="font-size:0.8rem; color:#666;">親子綠色呼吸智慧隨行助手</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -338,12 +299,12 @@ with col_head2:
 
 with col_head3:
     st.markdown('<div class="sos-header-btn">', unsafe_allow_html=True)
-    if st.button("🚨 求救", key="top_right_sos_btn"):
+    if st.button("🚨 一鍵求救", key="top_right_sos_btn"):
         st.session_state.current_page = "sos"
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-st.markdown("<hr style='margin-top:4px; margin-bottom:10px; border-color:#E8F5E9;'>", unsafe_allow_html=True)
+st.markdown("<hr style='margin-top:5px; margin-bottom:15px; border-color:#E8F5E9;'>", unsafe_allow_html=True)
 
 
 # ==================== 5. 頁面 1：主選單 ====================
@@ -389,7 +350,7 @@ elif st.session_state.current_page == "routes":
             st.session_state.global_pm10 = st.slider("🌫️ 懸浮微粒 (PM10)", 10.0, 200.0, float(st.session_state.global_pm10), key="r_pm10")
             st.session_state.global_rain = st.checkbox("🌧️ 是否模擬降雨", value=st.session_state.global_rain, key="r_rain")
 
-    weather_tag_html = '<span class="badge-sim">🛠️ 手動模擬數據中</span>' if st.session_state.override_weather else '<span style="color:#2E7D32; font-weight:bold;">(📡 實時連線)</span>'
+    weather_tag_html = '<span class="badge-sim">🛠️ 手動模擬數據中</span>' if st.session_state.override_weather else '<span style="color:#2E7D32; font-size:0.85rem; font-weight:bold;">(📡 實時連線)</span>'
     st.markdown(f"##### ☁️ 當前氣象數據 {weather_tag_html}", unsafe_allow_html=True)
 
     r1, r2, r3, r4 = st.columns(4)
@@ -401,14 +362,14 @@ elif st.session_state.current_page == "routes":
         st.markdown(f"""<div class="metric-card"><div class="metric-title">🍃 PM2.5</div><div class="metric-value">{st.session_state.global_pm25:.1f}</div></div>""", unsafe_allow_html=True)
     with r4:
         rain_text = "是" if st.session_state.global_rain else "否"
-        st.markdown(f"""<div class="metric-card"><div class="metric-title">🌧️ 降雨</div><div class="metric-value">{rain_text}</div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-title">🌧️ 是否降雨</div><div class="metric-value">{rain_text}</div></div>""", unsafe_allow_html=True)
 
     st.write("")
 
     st.markdown("""
     <div class="card">
         <h3 style="margin-top:0px; color:#1E5631;">🗺️ 目的地與氣象/設施適應路線規劃</h3>
-        <p style="margin-bottom:0;">選擇目的地並可依據<b>坡度需求、母嬰室設施與當前氣象</b>自動調整評分與推薦：</p>
+        <p style="font-size:0.9rem; margin-bottom:0;">選擇目的地並可依據<b>坡度需求、母嬰室設施與當前氣象</b>自動調整評分與推薦：</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -589,7 +550,7 @@ elif st.session_state.current_page == "routes":
         ]
     }
 
-    col_sel1, col_sel2 = st.columns([1.5, 1.2])
+    col_sel1, col_sel2 = st.columns([2, 1])
     with col_sel1:
         selected_dest = st.selectbox("📍 請選擇目的地：", list(unique_destinations.keys()))
     with col_sel2:
@@ -656,18 +617,18 @@ elif st.session_state.current_page == "routes":
         st.markdown(f"""
         <div class="card" style="{'border-left:6px solid #E65100; background-color:#FFFDE7;' if is_best else ''}">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <h4 style="margin:0; color:#1B5E20; font-size:1.15em;">{route['name']} {nursery_badge}</h4>
+                <h4 style="margin:0; color:#1B5E20; font-size:1.15rem;">{route['name']} {nursery_badge}</h4>
                 {badge}
             </div>
-            <p style="color:#555; margin-bottom:8px;">{route['desc']}</p>
-            <div style="color:#333; line-height:1.6; margin-bottom:12px;">
+            <p style="font-size:0.88rem; color:#555; margin-bottom:8px;">{route['desc']}</p>
+            <div style="font-size:0.83rem; color:#333; line-height:1.6; margin-bottom:12px;">
                 <b>📏 長度：</b> {route['length']} | <b>⏱️ 時間：</b> {route['time']} | <b>⛰️ 坡度：</b> <b style="color:#0277BD;">{route['slope']}</b><br>
                 <b>🌳 樹蔭：</b> {route['shade']}% | <b>🚶‍♂️ 實時人數：</b> <b style="color:#EF6C00;">{route['live_crowd']} 人</b>
             </div>
             <a href="{nav_url}" target="_blank" style="text-decoration:none;">
                 <div style="
                     background-color:#1B5E20; color:white; text-align:center;
-                    padding:10px; border-radius:8px; font-weight:bold; font-size:1em;
+                    padding:10px; border-radius:8px; font-weight:bold; font-size:0.95rem;
                 ">
                     🧭 開啟路線地圖導航
                 </div>
@@ -676,7 +637,7 @@ elif st.session_state.current_page == "routes":
         """, unsafe_allow_html=True)
 
 
-# ==================== 7. 功能頁面 2：🎒 隨行裝備 ====================
+# ==================== 7. 功能頁面 2：🎒 隨行裝備 (預設全部未勾選) ====================
 elif st.session_state.current_page == "gear":
     st.markdown('<div class="back-btn">', unsafe_allow_html=True)
     if st.button("← 返回主頁面", key="back_gear"):
@@ -699,7 +660,7 @@ elif st.session_state.current_page == "gear":
             st.session_state.global_pm10 = st.slider("🌫️ 懸浮微粒 (PM10)", 10.0, 200.0, float(st.session_state.global_pm10), key="g_pm10")
             st.session_state.global_rain = st.checkbox("🌧️ 是否模擬降雨", value=st.session_state.global_rain, key="g_rain")
 
-    weather_tag_html = '<span class="badge-sim">🛠️ 手動模擬數據中</span>' if st.session_state.override_weather else '<span style="color:#2E7D32; font-weight:bold;">(📡 實時連線)</span>'
+    weather_tag_html = '<span class="badge-sim">🛠️ 手動模擬數據中</span>' if st.session_state.override_weather else '<span style="color:#2E7D32; font-size:0.85rem; font-weight:bold;">(📡 實時連線)</span>'
     st.markdown(f"##### ☁️ 當前氣象數據 {weather_tag_html}", unsafe_allow_html=True)
 
     r1, r2, r3, r4 = st.columns(4)
@@ -711,14 +672,14 @@ elif st.session_state.current_page == "gear":
         st.markdown(f"""<div class="metric-card"><div class="metric-title">🍃 PM2.5</div><div class="metric-value">{st.session_state.global_pm25:.1f}</div></div>""", unsafe_allow_html=True)
     with r4:
         rain_text = "是" if st.session_state.global_rain else "否"
-        st.markdown(f"""<div class="metric-card"><div class="metric-title">🌧️ 降雨</div><div class="metric-value">{rain_text}</div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-title">🌧️ 是否降雨</div><div class="metric-value">{rain_text}</div></div>""", unsafe_allow_html=True)
 
     st.write("")
 
     st.markdown("""
     <div class="card">
         <h3 style="margin-top:0px; color:#1E5631;">🎒 當前氣象動態推薦隨行裝備</h3>
-        <p style="margin-bottom:0;">系統根據目前的<b>氣溫、紫外線、是否降雨與懸浮微粒</b>數據精算出的推薦清單 (請依需求勾選完成)：</p>
+        <p style="font-size:0.9rem; margin-bottom:0;">系統根據目前的<b>氣溫、紫外線、是否降雨與懸浮微粒</b>數據精算出的推薦清單 (請依需求勾選完成)：</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -767,7 +728,7 @@ elif st.session_state.current_page == "audio":
     st.markdown("""
     <div class="card">
         <h3 style="margin-top:0px; color:#1E5631;">🪰 多頻率驅蚊驅蟲器</h3>
-        <p style="margin-bottom:0;">選擇特定昆蟲頻率，啟動後離開此頁面聲波依然保持播放。</p>
+        <p style="font-size:0.9rem; margin-bottom:0;">選擇特定昆蟲頻率，啟動後離開此頁面聲波依然保持播放。</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -792,8 +753,8 @@ elif st.session_state.current_page == "audio":
 
     st.markdown(f"""
     <div class="card" style="text-align: center;">
-        <h2 style="color: #2E7D32; font-size: 2.1em; margin:0;">{current_hz / 1000:.1f} kHz</h2>
-        <p style="color:#666; margin-top:4px;">選擇頻率：<b>{freq_choice.split('-')[1].strip()}</b></p>
+        <h2 style="color: #2E7D32; font-size: 2.1rem; margin:0;">{current_hz / 1000:.1f} kHz</h2>
+        <p style="font-size:0.85rem; color:#666; margin-top:4px;">選擇頻率：<b>{freq_choice.split('-')[1].strip()}</b></p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -811,7 +772,7 @@ elif st.session_state.current_page == "audio":
 
     audio_js_template = """
     <div style="text-align:center; padding:10px; background:#F1F8E9; border-radius:10px;">
-        <p style="font-size:1.1em; color:#2E7D32; font-weight:bold; margin:0;">
+        <p style="font-size:0.9rem; color:#2E7D32; font-weight:bold; margin:0;">
             __STATUS_TEXT__
         </p>
     </div>
@@ -838,7 +799,7 @@ elif st.session_state.current_page == "audio":
                                 .replace("__IS_ACTIVE__", 'true' if st.session_state.audio_active else 'false')\
                                 .replace("__CURRENT_HZ__", str(current_hz))
 
-    st.components.v1.html(audio_js, height=85)
+    st.components.v1.html(audio_js, height=75)
 
 
 # ==================== 9. 功能頁面 4：🚨 一鍵求救專區 ====================
@@ -852,46 +813,46 @@ elif st.session_state.current_page == "sos":
     st.markdown("""
     <div class="card" style="border-left:5px solid #C62828; background-color:#FFEBEE;">
         <h3 style="margin-top:0px; color:#B71C1C;">🚨 一鍵求救與精準 GPS 定位通報</h3>
-        <p style="color:#C62828; margin-bottom:0;">如在戶外遇到緊急情況，請保持冷靜。系統已自動獲取您的 GPS 並比對地區緊急求救熱線：</p>
+        <p style="font-size:0.9rem; color:#C62828; margin-bottom:0;">如在戶外遇到緊急情況，請保持冷靜。系統已自動獲取您的 GPS 並比對地區緊急求救熱線：</p>
     </div>
     """, unsafe_allow_html=True)
 
     sos_js_template = """
     <div style="text-align:center; padding:10px; background-color:#FFEBEE; border-radius:10px; border:1px solid #FFCDD2; margin-bottom:12px;">
-        <div id="sosGpsStatus" style="font-size:1.05em; color:#C62828; font-weight:bold; margin-bottom:6px;">
+        <div id="sosGpsStatus" style="font-size:0.9rem; color:#C62828; font-weight:bold; margin-bottom:6px;">
             📡 正在感應當前衛星精確一鍵求救 GPS 座標...
         </div>
-        <div id="regionNotice" style="font-size:0.95em; color:#B71C1C; font-weight:bold;"></div>
+        <div id="regionNotice" style="font-size:0.85rem; color:#B71C1C; font-weight:bold;"></div>
     </div>
 
     <div style="background-color:#FFFFFF; border-radius:12px; padding:16px; border-left:5px solid #C62828; box-shadow:0 2px 10px rgba(0,0,0,0.04); margin-bottom:16px; text-align:center;">
-        <h4 style="color:#C62828; margin-top:0; font-size:1.15em;">📋 一鍵複製精準 GPS 求救簡訊內容</h4>
+        <h4 style="color:#C62828; margin-top:0; font-size:1.05rem;">📋 一鍵複製精準 GPS 求救簡訊內容</h4>
         
         <div style="margin-bottom:12px;">
-            <button id="copyBtn" onclick="copySosText()" style="width:100%; background-color:#C62828; color:white; font-size:1.15em; font-weight:bold; padding:14px; border:none; border-radius:10px; cursor:pointer; box-shadow:0 4px 10px rgba(198,40,40,0.3);">
+            <button id="copyBtn" onclick="copySosText()" style="width:100%; background-color:#C62828; color:white; font-size:1.1rem; font-weight:bold; padding:14px; border:none; border-radius:10px; cursor:pointer; box-shadow:0 4px 10px rgba(198,40,40,0.3);">
                 📋 一鍵複製求救簡訊內容 (含實時經緯度)
             </button>
         </div>
 
-        <p style="color:#666; text-align:left; margin-bottom:4px; font-weight:bold;">📱 將複製的內文貼至微信、簡訊發送給救援隊：</p>
-        <textarea id="sosTextarea" readonly style="width:100%; height:120px; background-color:#F9F9F9; border-radius:8px; border:1px solid #FFCDD2; padding:10px; font-family:monospace; font-size:0.95em; box-sizing:border-box; color:#333;"></textarea>
+        <p style="font-size:0.85rem; color:#666; text-align:left; margin-bottom:4px; font-weight:bold;">📱 將複製的內文貼至微信、簡訊發送給救援隊：</p>
+        <textarea id="sosTextarea" readonly style="width:100%; height:115px; background-color:#F9F9F9; border-radius:8px; border:1px solid #FFCDD2; padding:10px; font-family:monospace; font-size:0.85rem; box-sizing:border-box; color:#333;"></textarea>
     </div>
 
     <div id="phoneArea" style="margin-bottom:16px;">
-        <h5 style="margin-bottom:8px; color:#1B5E20; font-size:1.1em;">📞 當前地區求助熱線直撥</h5>
+        <h5 style="margin-bottom:8px; color:#1B5E20;">📞 當前地區求助熱線直撥</h5>
         <div style="display:flex; gap:10px;">
             <a id="pBtn1" href="tel:110" style="flex:1; text-decoration:none;">
-                <div style="background-color:#C62828; color:white; text-align:center; padding:12px 4px; border-radius:10px; font-weight:bold; font-size:0.95em; white-space:nowrap;">
+                <div style="background-color:#C62828; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold;">
                     📞 110 報案
                 </div>
             </a>
             <a id="pBtn2" href="tel:119" style="flex:1; text-decoration:none;">
-                <div style="background-color:#C62828; color:white; text-align:center; padding:12px 4px; border-radius:10px; font-weight:bold; font-size:0.95em; white-space:nowrap;">
+                <div style="background-color:#C62828; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold;">
                     📞 119 消防
                 </div>
             </a>
             <a id="pBtn3" href="tel:120" style="flex:1; text-decoration:none;">
-                <div style="background-color:#C62828; color:white; text-align:center; padding:12px 4px; border-radius:10px; font-weight:bold; font-size:0.95em; white-space:nowrap;">
+                <div style="background-color:#C62828; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold;">
                     📞 120 急救
                 </div>
             </a>
@@ -969,6 +930,6 @@ elif st.session_state.current_page == "sos":
     nick_name = st.session_state.user_nickname if st.session_state.user_nickname else "未設定暱稱遊客"
     rendered_sos_html = sos_js_template.replace("__USER_NICK__", str(nick_name))
 
-    st.components.v1.html(rendered_sos_html, height=380)
+    st.components.v1.html(rendered_sos_html, height=360)
 
     st.info("💡 提示：點擊上方「一鍵複製」按鈕後，打開微信、簡訊或對講軟體貼上，即可將精確 GPS 座標發給救援隊！")

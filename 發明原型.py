@@ -972,4 +972,4 @@ elif st.session_state.current_page == "sos":
 
     st.components.v1.html(rendered_sos_html, height=380)
 
-    st.info("💡 提示：點擊上方「一鍵複製」按鈕後，打開微信、簡訊或對講軟體貼上，即可將精確 GPS 座標發給救援隊！")
+    st.info("💡 提示：點擊上方「一鍵複製」按鈕後，打開微信、簡訊或對講軟體貼上，即可將精確 GPS 座標發給救援隊！")s

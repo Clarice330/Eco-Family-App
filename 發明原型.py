@@ -1,4 +1,4 @@
-z# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 🍀 絲野仙蹤 (Eco-Family) - 親子綠色呼吸智慧康旅導航系統
 """
@@ -75,30 +75,36 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ==================== 2. 全局 CSS 樣式美化 (修復滾動與行動端橫排) ====================
+# ==================== 2. 全局 CSS 樣式美化 (極致防折行版) ====================
 if st.session_state.is_elder_mode:
     base_font_size = "1.25rem"   # 大字體基礎設定
     btn_font_size = "1.6rem"     # 功能按鈕字體
     btn_height = "80px"          # 功能按鈕高度
+    header_btn_font = "0.68rem"  # 頂部小按鈕在大字體模式下的精準字級
     bottom_padding = "180px"     # 修復電腦端放大後下方被遮擋無法滾動到底的問題
 else:
     base_font_size = "1.0rem"
     btn_font_size = "1.35rem"
     btn_height = "76px"
+    header_btn_font = "0.75rem"
     bottom_padding = "60px"
 
 st.markdown(f"""
 <style>
-    /* 1. 修復電腦端滾動到底部問題：取消破壞高度計算的 zoom 屬性，改用彈性 padding */
+    /* 移除頂部外邊距與內邊距，節省空間 */
+    .block-container {{
+        padding-top: 0.5rem !important;
+        padding-bottom: {bottom_padding} !important;
+        padding-left: 0.2rem !important;
+        padding-right: 0.2rem !important;
+    }}
+
+    /* 1. 全局字體設定 */
     html, body, .stApp {{
         background-color: #F7FAF8 !important;
         color: #2C3E50 !important;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
         font-size: {base_font_size} !important;
-    }}
-    
-    .stApp {{
-        padding-bottom: {bottom_padding} !important;
     }}
 
     /* 2. 強制統一所有內建與自訂文字標籤 */
@@ -165,38 +171,53 @@ st.markdown(f"""
         text-decoration: none !important;
     }}
 
-    /* 7. 強制手機端與電腦端 Column 不換行 (保持同一排) */
+    /* 7. 強制 Column 不換行並緊湊化 */
     [data-testid="stHorizontalBlock"] {{
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
         align-items: center !important;
-        gap: 3px !important;
+        gap: 1px !important;
+    }}
+    [data-testid="column"] {{
+        padding: 0px 1px !important;
+        min-width: 0px !important;
     }}
 
-    /* 8. 頂部 Header 求救與驅蟲按鈕特化樣式 (緊湊 padding 防止換行) */
+    div[data-testid="stElementContainer"] {{
+        margin-top: 0px !important;
+        margin-bottom: 0px !important;
+    }}
+
+    /* 8. 頂部 Header 求救與驅蟲按鈕特化 (徹底防止「蟲」字折行) */
     .sos-header-btn button, .sos-header-btn button * {{
         background-color: #FFEBEE !important;
         color: #C62828 !important;
         border: 1.5px solid #FFCDD2 !important;
         font-weight: 800 !important;
-        height: 42px !important;
-        min-height: 42px !important;
-        font-size: 0.78rem !important;
+        height: 38px !important;
+        min-height: 38px !important;
+        font-size: {header_btn_font} !important;
         border-radius: 8px !important;
-        padding: 2px 1px !important;
+        padding: 0px 1px !important;
         margin-bottom: 0px !important;
         white-space: nowrap !important;
+        word-break: keep-all !important;
+        letter-spacing: -0.5px !important;  /* 緊湊字距，確保單排完美呈現 */
+        flex-shrink: 0 !important;
     }}
 
     .audio-header-btn button, .audio-header-btn button * {{
-        height: 42px !important;
-        min-height: 42px !important;
-        font-size: 0.78rem !important;
+        height: 38px !important;
+        min-height: 38px !important;
+        font-size: {header_btn_font} !important;
         border-radius: 8px !important;
-        padding: 2px 1px !important;
+        padding: 0px 1px !important;
         margin-bottom: 0px !important;
         white-space: nowrap !important;
+        word-break: keep-all !important;
+        letter-spacing: -0.5px !important;  /* 緊湊字距，確保單排完美呈現 */
+        flex-shrink: 0 !important;
     }}
 
     /* 9. 經典卡片容器 */
@@ -295,16 +316,17 @@ def update_weather_and_aqi():
 update_weather_and_aqi()
 
 
-# ==================== 4. 頂部 Header ====================
+# ==================== 4. 頂部 Header (調整權重擴大驅蚊按鈕寬度) ====================
 audio_badge_text = "🟢 驅蚊驅蟲" if st.session_state.audio_active else "🔴 驅蚊驅蟲"
 
-col_head1, col_head2, col_head3 = st.columns([0.8, 1.2, 1.0])
+# 此處將中間欄位比重從 1.0 提升到 1.3，給予驅蚊按鈕最大展示寬度
+col_head1, col_head2, col_head3 = st.columns([0.9, 1.3, 0.9])
 
 with col_head1:
     st.markdown("""
     <div>
-        <div style="font-size:0.95em; font-weight:bold; color:#1B5E20; white-space:nowrap;">🍀 絲野仙蹤</div>
-        <div style="font-size:0.68em; color:#666; white-space:nowrap;">智慧隨行助手</div>
+        <div style="font-size:0.88em; font-weight:bold; color:#1B5E20; white-space:nowrap; line-height:1.1;">🍀 絲野仙蹤</div>
+        <div style="font-size:0.62em; color:#666; white-space:nowrap; line-height:1.1;">智慧隨行助手</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -322,7 +344,7 @@ with col_head3:
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-st.markdown("<hr style='margin-top:5px; margin-bottom:15px; border-color:#E8F5E9;'>", unsafe_allow_html=True)
+st.markdown("<hr style='margin-top:4px; margin-bottom:10px; border-color:#E8F5E9;'>", unsafe_allow_html=True)
 
 
 # ==================== 5. 頁面 1：主選單 ====================

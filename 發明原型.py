@@ -1,23 +1,22 @@
 # -*- coding: utf-8 -*-
 """
-🍀 絲野仙蹤 (Eco-Family) - 親子綠色呼吸智慧隨行助手
-標準配置：3 大功能 (智慧路線規劃、隨行裝備、親子生態動植物識別外連)
-+ 2 右上角小功能正方形按鈕 (🔊 驅蟲, 🚨 一鍵求救)
-+ 頂部「👵 關愛大字體模式」開關
-+ 前兩項核心功能皆含「🌤️ 手動氣象模擬測試面板」
+🍀 絲野仙蹤 (Eco-Family) - 親子綠色呼吸智慧康旅導航系統
 """
 
 import streamlit as st
+import pandas as pd
 import requests
 import urllib.parse
-import streamlit.components.v1 as components
+import time
+import math
+from datetime import datetime
 
+# ==================== 1. 全域 Session State 安全初始化 ====================
 query_params = st.query_params
 
 if "page" in query_params and query_params["page"]:
     st.session_state.current_page = query_params["page"]
 
-# 氣象實時與模擬數據
 if "global_temp" not in st.session_state:
     st.session_state.global_temp = 22.5
 if "global_uv" not in st.session_state:
@@ -27,40 +26,48 @@ if "global_rain" not in st.session_state:
 if "global_wind" not in st.session_state:
     st.session_state.global_wind = 10.0
 if "global_pm25" not in st.session_state:
-    st.session_state.global_pm25 = 12.0
+    st.session_state.global_pm25 = 12.0  # PM2.5 微粒 (μg/m³)
 if "global_pm10" not in st.session_state:
-    st.session_state.global_pm10 = 24.0
+    st.session_state.global_pm10 = 24.0  # PM10 懸浮微粒 (μg/m³)
 if "global_aqi" not in st.session_state:
-    st.session_state.global_aqi = 28.0
+    st.session_state.global_aqi = 28.0   # 空氣質量指數 (AQI)
 
-# 是否開啟手動氣象覆蓋測試
 if "override_weather" not in st.session_state:
     st.session_state.override_weather = False
 
-# 關愛大字體模式開關
+# 新增：老年版/大字體模式開關 (預設為 False)
 if "is_elder_mode" not in st.session_state:
     st.session_state.is_elder_mode = False
 
-# 使用者 GPS 座標 (預設澳門座標)
+# 讀取真實 GPS 座標
+if "lat" in query_params and "lon" in query_params:
+    try:
+        st.session_state.my_lat = float(query_params["lat"])
+        st.session_state.my_lon = float(query_params["lon"])
+    except ValueError:
+        pass
+
+# 使用者 GPS 座標 (預設座標)
 if "my_lat" not in st.session_state:
     st.session_state.my_lat = 22.1568
 if "my_lon" not in st.session_state:
     st.session_state.my_lon = 113.5615
 
-# 小功能 1：驅聲波狀態與記憶
+# 聲波驅蟲狀態與記憶
 if "audio_active" not in st.session_state:
     st.session_state.audio_active = False
 if "selected_insect_freq" not in st.session_state:
     st.session_state.selected_insect_freq = "17.4 kHz - 模擬雄蚊翅聲 (驅避咬人母蚊)"
 
-# 預設暱稱
+# 預設暱稱 (SOS 系統使用)
 if "user_nickname" not in st.session_state:
-    st.session_state.user_nickname = "親兒子/女"
+    st.session_state.user_nickname = ""
 
 # 導航頁面狀態
 if "current_page" not in st.session_state:
     st.session_state.current_page = "menu"
 
+# 頁面配置
 st.set_page_config(
     page_title="絲野仙蹤 Eco-Family",
     page_icon="🍀",
@@ -68,216 +75,136 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-is_elder = st.session_state.is_elder_mode
-
-# 動態計算各種層級的字體大小 (外框尺寸固定 85px，文字滿框放大)
-btn_font_size = "1.85rem" if is_elder else "1.2rem"
-btn_padding = "0px 4px" if is_elder else "12px 16px"
-btn_line_height = "1.1" if is_elder else "1.3"
-
-card_body_size = "1.3rem" if is_elder else "0.9rem"
-card_h3_size = "1.6rem" if is_elder else "1.2rem"
-card_h4_size = "1.45rem" if is_elder else "1.05rem"
-metric_val_size = "1.8rem" if is_elder else "1.35rem"
-metric_title_size = "1.1rem" if is_elder else "0.85rem"
-label_font_size = "1.3rem" if is_elder else "0.95rem"
+# ==================== 2. 全局 CSS 樣式美化 (大幅調大老年版字體與全站縮放) ====================
+zoom_val = "1.45" if st.session_state.is_elder_mode else "1.0"
+btn_font_size = "2.0rem" if st.session_state.is_elder_mode else "1.35rem"
+btn_height = "90px" if st.session_state.is_elder_mode else "76px"
 
 st.markdown(f"""
 <style>
+    /* 動態切換全站縮放比例 */
     .stApp {{
-        background-color: #F4F7F4;
-        color: #1B4332;
+        background-color: #F7FAF8;
+        color: #2C3E50;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        
+        zoom: {zoom_val};
+        -moz-transform: scale({zoom_val});
+        -moz-transform-origin: top center;
     }}
     
+    /* 隱藏原生側邊欄 */
     section[data-testid="stSidebar"] {{
         display: none;
     }}
 
-    /* 強制頂部欄在所有手機螢幕下都橫向緊湊排列，絕不換行或推至螢幕外 */
-    div[data-testid="stHorizontalBlock"]:first-of-type {{
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        gap: 4px !important;
+    /* 功能按鈕容器寬度與邊距強制對齊 */
+    div[data-testid="stButton"], div[data-testid="stLinkButton"] {{
         width: 100% !important;
-    }}
-
-    div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"]:nth-child(1) {{
-        flex: 1 1 auto !important;
-        min-width: 0 !important;
-    }}
-
-    div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"]:nth-child(2),
-    div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"]:nth-child(3) {{
-        flex: 0 0 auto !important;
-        width: 42px !important;
-        min-width: 42px !important;
-    }}
-
-    /* 按鈕容器全寬調整 */
-    div[data-testid="stButton"] {{
-        width: 100% !important;
-        margin: 0 !important;
+        margin: 0 0 16px 0 !important;
         padding: 0 !important;
         box-sizing: border-box !important;
     }}
 
-    /* 綠色系標準選單大按鈕 (外框高度固定 85px) */
-    div[data-testid="stButton"] > button {{
+    /* 功能按鈕樣式 - 強制字體充滿按鈕 */
+    div[data-testid="stButton"] > button, div[data-testid="stLinkButton"] > a {{
         width: 100% !important;
-        background: linear-gradient(135deg, #FFFFFF 0%, #F1F8E9 100%) !important;
-        border-radius: 18px !important;
-        height: 85px !important;
-        min-height: 85px !important;
-        max-height: 85px !important;
-        box-shadow: 0 4px 12px rgba(46, 125, 50, 0.08) !important;
-        border: 2px solid #A5D6A7 !important;
+        background-color: #FFFFFF !important;
+        color: #1B5E20 !important;
+        border-radius: 16px !important;
+        height: {btn_height} !important;
+        min-height: {btn_height} !important;
+        max-height: {btn_height} !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.04) !important;
+        border: 2px solid #E8F5E9 !important;
         text-align: center !important;
-        margin: 0 0 14px 0 !important;
-        padding: {btn_padding} !important;
+        font-size: {btn_font_size} !important;
+        font-weight: 900 !important;
+        margin: 0 0 16px 0 !important;
+        padding: 0 8px !important;
         transition: all 0.2s ease-in-out !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
+        text-decoration: none !important;
+        border-bottom: none !important;
         box-sizing: border-box !important;
-        white-space: normal !important;
-        word-break: break-word !important;
+        line-height: 1.1 !important;
     }}
 
-    /* 強制鎖定大按鈕內部所有層級 (p, span, div) 的字體大小與行高 */
-    div[data-testid="stButton"] > button,
-    div[data-testid="stButton"] > button *,
-    div[data-testid="stButton"] > button p,
-    div[data-testid="stButton"] > button span,
-    div[data-testid="stButton"] > button div {{
-        font-size: {btn_font_size} !important;
-        font-weight: 800 !important;
-        line-height: {btn_line_height} !important;
-        color: #1B5E20 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }}
-
-    div[data-testid="stButton"] > button:hover {{
+    div[data-testid="stButton"] > button:hover, div[data-testid="stLinkButton"] > a:hover {{
         border-color: #2E7D32 !important;
-        background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%) !important;
-        box-shadow: 0 6px 16px rgba(46, 125, 50, 0.15) !important;
+        box-shadow: 0 6px 20px rgba(46,125,50,0.18) !important;
+        background-color: #F1F8E9 !important;
         transform: translateY(-2px) !important;
-    }}
-
-    /* 右上角小功能專屬正方形小按鈕 (42px x 42px) */
-    .top-square-btn div[data-testid="stButton"] {{
-        margin: 0 !important;
-        width: 42px !important;
-    }}
-
-    .top-square-btn div[data-testid="stButton"] > button {{
-        width: 42px !important;
-        min-width: 42px !important;
-        max-width: 42px !important;
-        height: 42px !important;
-        min-height: 42px !important;
-        max-height: 42px !important;
-        border-radius: 12px !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.06) !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-    }}
-    
-    .top-square-audio div[data-testid="stButton"] > button {{
-        background: #E8F5E9 !important;
-        border: 1.5px solid #81C784 !important;
-    }}
-    .top-square-audio div[data-testid="stButton"] > button,
-    .top-square-audio div[data-testid="stButton"] > button *,
-    .top-square-audio div[data-testid="stButton"] > button p,
-    .top-square-audio div[data-testid="stButton"] > button span {{
         color: #1B5E20 !important;
-        font-size: 1.15rem !important;
-        line-height: 1 !important;
+        text-decoration: none !important;
     }}
 
-    .top-square-sos div[data-testid="stButton"] > button {{
-        background: #FFEBEE !important;
-        border: 1.5px solid #E53935 !important;
-    }}
-    .top-square-sos div[data-testid="stButton"] > button,
-    .top-square-sos div[data-testid="stButton"] > button *,
-    .top-square-sos div[data-testid="stButton"] > button p,
-    .top-square-sos div[data-testid="stButton"] > button span {{
+    /* 頂部 Header 求救按鈕特化樣式 */
+    .sos-header-btn button {{
+        background-color: #FFEBEE !important;
         color: #C62828 !important;
-        font-size: 1.15rem !important;
-        line-height: 1 !important;
+        border: 1.5px solid #FFCDD2 !important;
+        font-weight: 800 !important;
+        height: 38px !important;
+        min-height: 38px !important;
+        font-size: 0.85rem !important;
+        border-radius: 8px !important;
+        padding: 4px 8px !important;
+        margin-bottom: 0px !important;
     }}
 
-    /* 內文卡片與內部文字放大樣式 */
+    /* 頂部 Header 驅蟲按鈕樣式 */
+    .audio-header-btn button {{
+        height: 38px !important;
+        min-height: 38px !important;
+        font-size: 0.85rem !important;
+        border-radius: 8px !important;
+        padding: 4px 8px !important;
+        margin-bottom: 0px !important;
+    }}
+
+    /* 經典卡片容器 */
     .card {{
         background-color: #FFFFFF;
-        border-radius: 16px;
+        border-radius: 12px;
         padding: 18px;
-        box-shadow: 0 2px 10px rgba(46, 125, 50, 0.06);
+        box-shadow: 0 2px 10px rgba(0,0,0,0.04);
         border-left: 5px solid #2E7D32;
         border-top: 1px solid #E8F5E9;
         border-right: 1px solid #E8F5E9;
         border-bottom: 1px solid #E8F5E9;
         margin-bottom: 16px;
-        font-size: {card_body_size} !important;
     }}
 
-    .card p, .card span, .card li, .card div {{
-        font-size: {card_body_size} !important;
-        line-height: 1.5 !important;
-    }}
-
-    .card h3 {{
-        font-size: {card_h3_size} !important;
-    }}
-
-    .card h4 {{
-        font-size: {card_h4_size} !important;
-    }}
-
-    /* 數據卡片放大 */
+    /* 氣象數據小方盒 */
     .metric-card {{
-        background-color: #E8F5E9;
-        border-radius: 12px;
+        background-color: #F1F8E9;
+        border-radius: 10px;
         padding: 10px;
         text-align: center;
-        border: 1px solid #C8E6C9;
+        border: 1px solid #C5E1A5;
         margin-bottom: 10px;
     }}
     .metric-title {{
-        font-size: {metric_title_size} !important;
-        color: #2E7D32;
+        font-size: 0.82rem;
+        color: #388E3C;
         font-weight: bold;
     }}
     .metric-value {{
-        font-size: {metric_val_size} !important;
+        font-size: 1.35rem;
         font-weight: bold;
         color: #1B5E20;
     }}
 
-    /* Streamlit 輸入元件文字（多選框、單選按鈕、標籤等）放大 */
-    label[data-testid="stWidgetLabel"] p,
-    div[data-baseweb="checkbox"] span,
-    div[data-baseweb="radio"] span,
-    div[data-baseweb="select"] span {{
-        font-size: {label_font_size} !important;
-        font-weight: 600 !important;
-    }}
-
+    /* 標籤 Badges */
     .badge-green {{
         background-color: #2E7D32;
         color: white;
         padding: 4px 10px;
         border-radius: 10px;
-        font-size: {"1.0rem" if is_elder else "0.8rem"};
+        font-size: 0.8rem;
         font-weight: bold;
     }}
     .badge-star {{
@@ -285,57 +212,45 @@ st.markdown(f"""
         color: white;
         padding: 4px 10px;
         border-radius: 10px;
-        font-size: {"1.0rem" if is_elder else "0.8rem"};
+        font-size: 0.8rem;
         font-weight: bold;
     }}
+    .badge-sim {{
+        background-color: #F57F17;
+        color: white;
+        padding: 3px 8px;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: bold;
+    }}
+    .badge-feature {{
+        background-color: #0277BD;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-size: 0.78rem;
+        font-weight: bold;
+        margin-left: 4px;
+    }}
 
+    /* 返回按鈕樣式 */
     .back-btn button {{
         background-color: #E8F5E9 !important;
         color: #1B5E20 !important;
         font-weight: bold !important;
         padding: 8px 16px !important;
-        border-radius: 10px !important;
-        border: 1px solid #A5D6A7 !important;
+        font-size: 0.95rem !important;
+        border-radius: 8px !important;
+        border: 1px solid #C8E6C9 !important;
         margin-bottom: 16px !important;
         height: auto !important;
         min-height: auto !important;
     }}
-    .back-btn button * {{
-        font-size: {"1.2rem" if is_elder else "0.95rem"} !important;
-    }}
-
-    /* 動植物辨識連結卡片樣式 */
-    .link-card-button {{
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        width: 100% !important;
-        height: 85px !important;
-        background: linear-gradient(135deg, #FFFFFF 0%, #F1F8E9 100%) !important;
-        border-radius: 18px !important;
-        border: 2px solid #A5D6A7 !important;
-        box-shadow: 0 4px 12px rgba(46, 125, 50, 0.08) !important;
-        text-decoration: none !important;
-        margin-bottom: 14px !important;
-        box-sizing: border-box !important;
-        transition: all 0.2s ease-in-out !important;
-    }}
-    .link-card-button:hover {{
-        border-color: #2E7D32 !important;
-        background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%) !important;
-        box-shadow: 0 6px 16px rgba(46, 125, 50, 0.15) !important;
-        transform: translateY(-2px) !important;
-    }}
-    .link-card-text {{
-        font-size: {btn_font_size} !important;
-        font-weight: 800 !important;
-        line-height: {btn_line_height} !important;
-        color: #1B5E20 !important;
-        text-align: center !important;
-    }}
 </style>
 """, unsafe_allow_html=True)
 
+
+# ==================== 3. 氣象實時數據連線 ====================
 def update_weather_and_aqi():
     if not st.session_state.override_weather:
         try:
@@ -358,69 +273,61 @@ def update_weather_and_aqi():
         except Exception:
             pass
 
+
 update_weather_and_aqi()
 
-# 頂部列：左側標題，右側兩個小正方形按鈕
-col_title, col_audio_sq, col_sos_sq = st.columns([2.5, 0.5, 0.5])
 
-with col_title:
-    title_font_size = "1.15rem" if is_elder else "1.05rem"
-    sub_title_size = "0.75rem" if is_elder else "0.68rem"
-    st.markdown(f"""
-    <div style="text-align: left; padding: 0px; overflow: hidden;">
-        <div style="font-size: {title_font_size}; font-weight: 800; color: #1B5E20; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-            🍀 絲野仙蹤 Eco-Family
-        </div>
-        <div style="font-size: {sub_title_size}; color: #2E7D32; margin-top: 1px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-            澳門親子綠色呼吸智慧隨行助手
-        </div>
+# ==================== 4. 頂部 Header ====================
+audio_badge_text = "🟢 驅蟲運作" if st.session_state.audio_active else "🔴 驅蟲未啟"
+
+col_head1, col_head2, col_head3 = st.columns([1.5, 0.9, 0.9])
+
+with col_head1:
+    st.markdown("""
+    <div>
+        <div class="brand-title" style="font-size:1.55rem; font-weight:bold; color:#1B5E20;">🍀 絲野仙蹤 Eco-Family</div>
+        <div class="brand-sub" style="font-size:0.8rem; color:#666;">親子綠色呼吸智慧隨行助手</div>
     </div>
     """, unsafe_allow_html=True)
 
-# 小功能 1：正方形 🔊 驅蟲按鈕
-with col_audio_sq:
-    st.markdown('<div class="top-square-btn top-square-audio">', unsafe_allow_html=True)
-    audio_btn_label = "🔊🟢" if st.session_state.audio_active else "🔊🔴"
-    if st.button(audio_btn_label, key="btn_top_audio", help="驅蟲聲波設置"):
+with col_head2:
+    st.markdown('<div class="audio-header-btn">', unsafe_allow_html=True)
+    if st.button(f"🔊 {audio_badge_text}", key="top_right_audio_btn"):
         st.session_state.current_page = "audio"
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-# 小功能 2：正方形 🚨 求救按鈕
-with col_sos_sq:
-    st.markdown('<div class="top-square-btn top-square-sos">', unsafe_allow_html=True)
-    if st.button("🚨", key="btn_top_sos", help="一鍵求救與定位"):
+with col_head3:
+    st.markdown('<div class="sos-header-btn">', unsafe_allow_html=True)
+    if st.button("🚨 一鍵求救", key="top_right_sos_btn"):
         st.session_state.current_page = "sos"
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-# 關愛大字體模式開關
-elder_toggle = st.toggle("👵 關愛大字體模式", value=st.session_state.is_elder_mode, key="elder_mode_toggle")
-if elder_toggle != st.session_state.is_elder_mode:
-    st.session_state.is_elder_mode = elder_toggle
-    st.rerun()
+st.markdown("<hr style='margin-top:5px; margin-bottom:15px; border-color:#E8F5E9;'>", unsafe_allow_html=True)
 
-st.markdown("<hr style='margin-top: 8px; margin-bottom: 20px; border: none; border-top: 1px solid #C8E6C9;'>", unsafe_allow_html=True)
 
+# ==================== 5. 頁面 1：主選單 ====================
 if st.session_state.current_page == "menu":
 
-    # 1. 大功能一：智慧路線規劃
+    elder_toggle = st.toggle("👵 關愛大字體模式 (老年版)", value=st.session_state.is_elder_mode)
+    if elder_toggle != st.session_state.is_elder_mode:
+        st.session_state.is_elder_mode = elder_toggle
+        st.rerun()
+
     if st.button("🗺️ 智慧路線規劃", key="btn_m1", use_container_width=True):
         st.session_state.current_page = "routes"
         st.rerun()
 
-    # 2. 大功能二：隨行裝備
     if st.button("🎒 隨行裝備", key="btn_m2", use_container_width=True):
         st.session_state.current_page = "gear"
         st.rerun()
 
-    # 3. 大功能三：親子生態動植物識別 (連結跳轉至指定線上辨識平台)
-    st.markdown(f"""
-    <a href="https://eddychan912-blip.github.io/eco-tracker11/" target="_blank" class="link-card-button">
-        <div class="link-card-text">🔍 親子生態動植物識別</div>
-    </a>
-    """, unsafe_allow_html=True)
+    ext_url = "https://eddychan912-blip.github.io/eco-tracker11/"
+    st.link_button("🔍 親子生態動植物識別", ext_url, use_container_width=True)
 
+
+# ==================== 6. 功能頁面 1：🗺️ 智慧路線規劃 ====================
 elif st.session_state.current_page == "routes":
     st.markdown('<div class="back-btn">', unsafe_allow_html=True)
     if st.button("← 返回主頁面", key="back_routes"):
@@ -428,22 +335,24 @@ elif st.session_state.current_page == "routes":
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # 氣象手動覆蓋與模擬調試控制面板 (大功能 1 手動模擬)
-    with st.expander("🌤️ 手動氣象模擬 / 測試調試面板", expanded=st.session_state.override_weather):
-        st.session_state.override_weather = st.checkbox("開啟手動氣象模擬 (覆蓋 API 數據)", value=st.session_state.override_weather, key="override_routes")
-        if st.session_state.override_weather:
-            st.info("💡 已啟用氣象模擬模式，您可以隨意調節以下環境數值測試路線動態推薦：")
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                st.session_state.global_temp = st.slider("🌡️ 氣溫 (°C)", -5.0, 40.0, float(st.session_state.global_temp), key="temp_r")
-                st.session_state.global_uv = st.slider("☀️ 紫外線 (UV)", 0.0, 12.0, float(st.session_state.global_uv), key="uv_r")
-            with c2:
-                st.session_state.global_rain = st.checkbox("🌧️ 是否降雨", value=st.session_state.global_rain, key="rain_r")
-                st.session_state.global_wind = st.slider("🌬️ 風速 (km/h)", 0.0, 60.0, float(st.session_state.global_wind), key="wind_r")
-            with c3:
-                st.session_state.global_pm25 = st.slider("🍃 PM2.5 (μg/m³)", 0.0, 200.0, float(st.session_state.global_pm25), key="pm25_r")
+    with st.expander("🛠️ 手動氣象模擬"):
+        was_override = st.session_state.override_weather
+        st.session_state.override_weather = st.checkbox("開啟手動氣象模擬", value=st.session_state.override_weather)
+        
+        if was_override and not st.session_state.override_weather:
+            update_weather_and_aqi()
+            st.rerun()
 
-    st.markdown("##### ☁️ 當前評估環境數據")
+        if st.session_state.override_weather:
+            st.session_state.global_temp = st.slider("🌡️ 氣溫 (°C)", 10.0, 38.0, float(st.session_state.global_temp), key="r_temp")
+            st.session_state.global_uv = st.slider("☀️ 紫外線 (UV Index)", 0.0, 12.0, float(st.session_state.global_uv), key="r_uv")
+            st.session_state.global_pm25 = st.slider("🍃 PM2.5", 5.0, 150.0, float(st.session_state.global_pm25), key="r_pm25")
+            st.session_state.global_pm10 = st.slider("🌫️ 懸浮微粒 (PM10)", 10.0, 200.0, float(st.session_state.global_pm10), key="r_pm10")
+            st.session_state.global_rain = st.checkbox("🌧️ 是否模擬降雨", value=st.session_state.global_rain, key="r_rain")
+
+    weather_tag_html = '<span class="badge-sim">🛠️ 手動模擬數據中</span>' if st.session_state.override_weather else '<span style="color:#2E7D32; font-size:0.85rem; font-weight:bold;">(📡 實時連線)</span>'
+    st.markdown(f"##### ☁️ 當前氣象數據 {weather_tag_html}", unsafe_allow_html=True)
+
     r1, r2, r3, r4 = st.columns(4)
     with r1:
         st.markdown(f"""<div class="metric-card"><div class="metric-title">🌡️ 氣溫</div><div class="metric-value">{st.session_state.global_temp:.1f}°C</div></div>""", unsafe_allow_html=True)
@@ -452,16 +361,15 @@ elif st.session_state.current_page == "routes":
     with r3:
         st.markdown(f"""<div class="metric-card"><div class="metric-title">🍃 PM2.5</div><div class="metric-value">{st.session_state.global_pm25:.1f}</div></div>""", unsafe_allow_html=True)
     with r4:
-        rain_text = "降雨中" if st.session_state.global_rain else "無雨"
-        st.markdown(f"""<div class="metric-card"><div class="metric-title">🌧️ 降雨</div><div class="metric-value">{rain_text}</div></div>""", unsafe_allow_html=True)
+        rain_text = "是" if st.session_state.global_rain else "否"
+        st.markdown(f"""<div class="metric-card"><div class="metric-title">🌧️ 是否降雨</div><div class="metric-value">{rain_text}</div></div>""", unsafe_allow_html=True)
 
-    # 依模擬或實時氣象自動判斷路線推薦狀態
-    weather_recommend = "rain" if st.session_state.global_rain else ("hot" if (st.session_state.global_temp >= 28.0 or st.session_state.global_uv >= 5.0) else "normal")
+    st.write("")
 
     st.markdown("""
     <div class="card">
-        <h3 style="margin-top:0px; color:#1B5E20;">🗺️ 目的地與設施路線規劃</h3>
-        <p style="margin-bottom:0; color:#2E7D32;">根據氣象狀態（降雨/高溫）、坡度需求與母嬰室設施自動調整最佳路線推薦：</p>
+        <h3 style="margin-top:0px; color:#1E5631;">🗺️ 目的地與氣象/設施適應路線規劃</h3>
+        <p style="font-size:0.9rem; margin-bottom:0;">選擇目的地並可依據<b>坡度需求、母嬰室設施與當前氣象</b>自動調整評分與推薦：</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -470,77 +378,266 @@ elif st.session_state.current_page == "routes":
             {
                 "id": 101, "target_condition": "rain",
                 "name": "🌲 大潭山斜行升降機風雨遮陽主線",
-                "shade": 95, "slope": "平緩 (斜行電梯/無障礙)", "has_nursery": True,
+                "shade": 95, "rain_safe": True, "base_crowd": 12,
+                "slope": "平緩 (斜行電梯/無障礙)", "has_nursery": True,
                 "length": "2.2 公里", "time": "40 分鐘",
                 "origin": "113.5615,22.1568", "destination": "113.5630,22.1580", "dest_name": "大潭山斜行升降機",
-                "desc": "設有無障礙風雨連廊與斜行電梯，設有母嬰洗手間，95% 高樹蔭覆蓋。"
+                "desc": "【下雨/惡劣天氣專屬推薦】設有無障礙風雨連廊與斜行電梯，設有母嬰洗手間，95% 高樹蔭覆蓋。"
             },
             {
                 "id": 102, "target_condition": "hot",
                 "name": "🦋 大潭山谷地賞蝶樹蔭林陰密徑",
-                "shade": 90, "slope": "中等緩坡", "has_nursery": True,
+                "shade": 90, "rain_safe": False, "base_crowd": 8,
+                "slope": "中等緩坡", "has_nursery": True,
                 "length": "1.8 公里", "time": "35 分鐘",
                 "origin": "113.5615,22.1568", "destination": "113.5620,22.1595", "dest_name": "大潭山郊野公園",
-                "desc": "茂密山谷樹蔭天然擋陽，郊野公園內備有母嬰室及休息亭。"
+                "desc": "【高溫/強紫外線專屬推薦】茂密山谷樹蔭天然擋陽，郊野公園內備有母嬰室及休息亭。"
+            },
+            {
+                "id": 103, "target_condition": "cool",
+                "name": "☀️ 大潭山山頂瞭望台 360度觀景線",
+                "shade": 45, "rain_safe": False, "base_crowd": 28,
+                "slope": "陡坡攀升", "has_nursery": False,
+                "length": "3.8 公里", "time": "70 分鐘",
+                "origin": "113.5615,22.1568", "destination": "113.5650,22.1610", "dest_name": "大潭山觀察台",
+                "desc": "【晴朗涼爽專屬推薦】直達山頂瞭望台，視野無遮擋，俯瞰全景。"
             }
         ],
         "松山 (東望洋) 健康徑": [
             {
                 "id": 201, "target_condition": "rain",
-                "name": "🗼 東望洋燈塔與防空洞展館歷史線",
-                "shade": 60, "slope": "平緩道路", "has_nursery": True,
+                "name": "🗼 東望洋燈塔與防空洞展館歷史避雨線",
+                "shade": 60, "rain_safe": True, "base_crowd": 30,
+                "slope": "平緩道路", "has_nursery": True,
                 "length": "2.5 公里", "time": "50 分鐘",
                 "origin": "113.5482,22.1965", "destination": "113.5498,22.1968", "dest_name": "東望洋燈塔",
-                "desc": "途經松山防空洞展館，可隨時入內避雨，展館內設有母嬰設施。"
+                "desc": "【下雨天氣專屬推薦】途經松山防空洞展館，可隨時入內避雨，展館內設有母嬰設施。"
             },
             {
                 "id": 202, "target_condition": "hot",
                 "name": "🌿 松山公園高樹蔭綠亭遮陽漫步線",
-                "shade": 92, "slope": "平緩道路", "has_nursery": True,
+                "shade": 92, "rain_safe": True, "base_crowd": 20,
+                "slope": "平緩道路", "has_nursery": True,
                 "length": "1.2 公里", "time": "25 分鐘",
                 "origin": "113.5482,22.1965", "destination": "113.5488,22.1972", "dest_name": "松山公園",
-                "desc": "全線密集高大榕樹掩映，公園洗手間配備母嬰護理台。"
+                "desc": "【高溫/強紫外線專屬推薦】全線密集高大榕樹掩映，公園洗手間配備母嬰護理台。"
+            },
+            {
+                "id": 203, "target_condition": "cool",
+                "name": "🏃‍♂️ 松山環山防滑塑膠跑道親子健身線",
+                "shade": 75, "rain_safe": False, "base_crowd": 55,
+                "slope": "中等緩坡", "has_nursery": False,
+                "length": "1.7 公里", "time": "30 分鐘",
+                "origin": "113.5482,22.1965", "destination": "113.5490,22.1980", "dest_name": "松山跑步徑",
+                "desc": "【晴朗涼爽專屬推薦】熱門運動步道，設有兒童遊樂場與休閒設施。"
+            }
+        ],
+        "黑沙水庫健康徑 (路環區)": [
+            {
+                "id": 301, "target_condition": "rain",
+                "name": "🛶 黑沙水庫水上單車風雨亭線",
+                "shade": 70, "rain_safe": True, "base_crowd": 18,
+                "slope": "平緩道路", "has_nursery": True,
+                "length": "1.0 公里", "time": "25 分鐘",
+                "origin": "113.5682,22.1245", "destination": "113.5688,22.1250", "dest_name": "黑沙水庫水上單車",
+                "desc": "【下雨天氣專屬推薦】設有大型景觀避雨亭，遊客中心內設有育嬰室設施。"
+            },
+            {
+                "id": 302, "target_condition": "hot",
+                "name": "💧 黑沙水庫吊橋環湖高蔭氧吧線",
+                "shade": 94, "rain_safe": False, "base_crowd": 10,
+                "slope": "中等緩坡", "has_nursery": True,
+                "length": "1.5 公里", "time": "35 分鐘",
+                "origin": "113.5682,22.1245", "destination": "113.5695,22.1255", "dest_name": "黑沙水庫郊野公園",
+                "desc": "【高溫/強紫外線專屬推薦】濃密樹冠覆蓋湖畔步道，公園服務站備有母嬰室。"
+            },
+            {
+                "id": 303, "target_condition": "cool",
+                "name": "🌲 水庫後山原生植物科普攬勝線",
+                "shade": 60, "rain_safe": False, "base_crowd": 8,
+                "slope": "陡坡攀升", "has_nursery": False,
+                "length": "2.0 公里", "time": "45 分鐘",
+                "origin": "113.5682,22.1245", "destination": "113.5700,22.1260", "dest_name": "黑沙水庫植物園",
+                "desc": "【晴朗涼爽專屬推薦】視野良好，沿途標註原生植物科普牌。"
+            }
+        ],
+        "小潭山 2000 環山徑 (氹仔區)": [
+            {
+                "id": 401, "target_condition": "rain",
+                "name": "🌊 小潭山西灣大橋海景風雨涼亭線",
+                "shade": 80, "rain_safe": True, "base_crowd": 14,
+                "slope": "平緩道路", "has_nursery": True,
+                "length": "2.3 公里", "time": "45 分鐘",
+                "origin": "113.5435,22.1521", "destination": "113.5445,22.1530", "dest_name": "小潭山2000環山徑",
+                "desc": "【下雨天氣專屬推薦】沿途涼亭極多，設有無障礙洗手間及母嬰換尿布台。"
+            },
+            {
+                "id": 402, "target_condition": "hot",
+                "name": "👶 小潭山無障礙坡道高蔭林陰線",
+                "shade": 91, "rain_safe": True, "base_crowd": 9,
+                "slope": "平緩 (無障礙坡道)", "has_nursery": True,
+                "length": "1.6 公里", "time": "30 分鐘",
+                "origin": "113.5435,22.1521", "destination": "113.5440,22.1528", "dest_name": "小潭山休閒花園",
+                "desc": "【高溫/強紫外線專屬推薦】樹蔭極高，坡道平緩，帶嬰兒車極度舒適，設母嬰室。"
+            },
+            {
+                "id": 403, "target_condition": "cool",
+                "name": "⛰️ 小潭山山頂天際線視野縱走線",
+                "shade": 50, "rain_safe": False, "base_crowd": 22,
+                "slope": "陡坡攀升", "has_nursery": False,
+                "length": "3.5 公里", "time": "60 分鐘",
+                "origin": "113.5435,22.1521", "destination": "113.5460,22.1545", "dest_name": "小潭山山頂觀景點",
+                "desc": "【晴朗涼爽專屬推薦】遠眺城市天際線，景致開闊。"
+            }
+        ],
+        "黑沙龍爪角海岸徑 (路環區)": [
+            {
+                "id": 501, "target_condition": "rain",
+                "name": "⛩️ 榕樹灣風雨亭連廊避雨線",
+                "shade": 85, "rain_safe": True, "base_crowd": 15,
+                "slope": "平緩道路", "has_nursery": False,
+                "length": "1.0 公里", "time": "25 分鐘",
+                "origin": "113.5712,22.1098", "destination": "113.5718,22.1102", "dest_name": "榕樹灣風雨亭",
+                "desc": "【下雨天氣專屬推薦】大榕樹群與涼亭避風避雨，安全性高。"
+            },
+            {
+                "id": 502, "target_condition": "hot",
+                "name": "🗿 龍爪角竹灣高蔭避暑步道",
+                "shade": 88, "rain_safe": False, "base_crowd": 25,
+                "slope": "中等緩坡", "has_nursery": True,
+                "length": "1.8 公里", "time": "45 分鐘",
+                "origin": "113.5712,22.1098", "destination": "113.5730,22.1120", "dest_name": "竹灣豪園觀景台",
+                "desc": "【高溫/強紫外線專屬推薦】竹林與綠樹擋住海面烈日暴曬，起點設有母嬰設施。"
+            },
+            {
+                "id": 503, "target_condition": "cool",
+                "name": "🌊 龍爪角奇石聽濤海岸地質線",
+                "shade": 30, "rain_safe": False, "base_crowd": 60,
+                "slope": "中等緩坡 (部分礁石)", "has_nursery": False,
+                "length": "1.2 公里", "time": "40 分鐘",
+                "origin": "113.5712,22.1098", "destination": "113.5725,22.1110", "dest_name": "龍爪角海岸徑",
+                "desc": "【晴朗涼爽專屬推薦】沿海奇石，聽濤觀海，晴天無浪時極致震撼。"
+            }
+        ],
+        "望廈山市政公園步道": [
+            {
+                "id": 601, "target_condition": "rain",
+                "name": "🌺 望廈山溫室展館室內避雨線",
+                "shade": 95, "rain_safe": True, "base_crowd": 12,
+                "slope": "平緩道路", "has_nursery": True,
+                "length": "0.8 公里", "time": "20 分鐘",
+                "origin": "113.5488,22.2062", "destination": "113.5490,22.2065", "dest_name": "望廈山溫室展館",
+                "desc": "【下雨天氣專屬推薦】室內溫室展示花卉，下雨天不濕身，設有標準母嬰室。"
+            },
+            {
+                "id": 602, "target_condition": "hot",
+                "name": "🌿 望廈山茂密綠林避暑步道",
+                "shade": 92, "rain_safe": True, "base_crowd": 16,
+                "slope": "平緩道路", "has_nursery": True,
+                "length": "1.1 公里", "time": "30 分鐘",
+                "origin": "113.5488,22.2062", "destination": "113.5495,22.2070", "dest_name": "望廈山市政公園",
+                "desc": "【高溫/強紫外線專屬推薦】市區高覆蓋天然綠肺遮陽，公園處備有母嬰育嬰間。"
+            },
+            {
+                "id": 603, "target_condition": "cool",
+                "name": "🏃‍♂️ 望廈山砲台古蹟文化攬勝線",
+                "shade": 70, "rain_safe": False, "base_crowd": 20,
+                "slope": "中等緩坡", "has_nursery": False,
+                "length": "1.5 公里", "time": "35 分鐘",
+                "origin": "113.5488,22.2062", "destination": "113.5500,22.2075", "dest_name": "望廈砲台",
+                "desc": "【晴朗涼爽專屬推薦】歷史文化古蹟步道，展望北區城市景觀。"
             }
         ]
     }
 
     col_sel1, col_sel2 = st.columns([2, 1])
     with col_sel1:
-        selected_dest = st.selectbox("📍 請選擇目的地：", list(unique_destinations.keys()), key="dest_sel")
+        selected_dest = st.selectbox("📍 請選擇目的地：", list(unique_destinations.keys()))
     with col_sel2:
-        selected_slope = st.selectbox("🏔️ 坡度篩選：", ["全部坡度", "平緩 (斜行電梯/無障礙)", "平緩道路", "中等緩坡"], key="slope_sel")
+        selected_slope = st.selectbox("🏔️ 坡度篩選：", ["全部坡度", "平緩 (無障礙/推車友善)", "中等緩坡", "陡坡攀升"])
 
-    need_nursery = st.checkbox("🍼 僅顯示設有母嬰室設施之路線", value=False, key="nursery_ck")
+    need_nursery = st.checkbox("🍼 僅顯示設有母嬰室 / 育嬰設施之路線", value=False)
+
+    cur_temp = st.session_state.global_temp
+    cur_uv = st.session_state.global_uv
+    is_rain = st.session_state.global_rain
 
     dest_routes = unique_destinations[selected_dest]
-    for idx, route in enumerate(dest_routes):
-        if need_nursery and not route["has_nursery"]:
-            continue
-        if selected_slope != "全部坡度" and route["slope"] != selected_slope:
-            continue
+    time_seed = int(time.time() / 8)
 
-        is_best = (route["target_condition"] == weather_recommend) or (weather_recommend == "normal" and idx == 0)
-        badge = '<span class="badge-star">🌟 當前氣象首選推薦</span>' if is_best else '<span class="badge-green">推薦</span>'
+    if is_rain:
+        st.info("🌧️ 檢測到降雨氣象！系統已為您優先推薦【風雨遮陽 / 室內避雨路線】。")
+    elif cur_temp >= 26.0 or cur_uv >= 2.5:
+        st.info("☀️ 檢測到高溫/強紫外線氣象！系統已為您優先推薦【高樹蔭覆蓋林陰避暑路線】。")
+    else:
+        st.success("🌤️ 當前氣象晴朗宜人！系統已為您優先推薦【山頂展望 / 景觀視野路線】。")
+
+    filtered_routes = []
+    for r in dest_routes:
+        if need_nursery and not r["has_nursery"]:
+            continue
+            
+        if selected_slope != "全部坡度":
+            if "平緩" in selected_slope and "平緩" not in r["slope"]:
+                continue
+            elif "中等" in selected_slope and "中等" not in r["slope"]:
+                continue
+            elif "陡坡" in selected_slope and "陡坡" not in r["slope"]:
+                continue
+
+        live_crowd_delta = int(math.sin(time_seed + r["id"]) * 5)
+        r["live_crowd"] = max(3, r["base_crowd"] + live_crowd_delta)
+
+        cond = r.get("target_condition", "")
+        
+        if is_rain:
+            score = 98.0 if cond == "rain" else (65.0 if cond == "hot" else 40.0)
+        elif cur_temp >= 26.0 or cur_uv >= 2.5:
+            score = 98.0 if cond == "hot" else (60.0 if cond == "cool" else 50.0)
+        else:
+            score = 98.0 if cond == "cool" else (70.0 if cond == "hot" else 55.0)
+
+        r["dynamic_score"] = round(score, 1)
+        filtered_routes.append(r)
+
+    sorted_dest_routes = sorted(filtered_routes, key=lambda x: x["dynamic_score"], reverse=True)
+
+    st.markdown(f"#### 🎯 當前條件篩選推薦路線 ({len(sorted_dest_routes)} 條)：")
+
+    if not sorted_dest_routes:
+        st.warning("⚠️ 目前選取的目的地無符合坡度或母嬰室篩選條件之路線，請嘗試放寬篩選條件。")
+
+    for idx, route in enumerate(sorted_dest_routes):
+        is_best = (idx == 0)
+        badge = '<span class="badge-star">🌟 當前最佳推薦</span>' if is_best else f'<span class="badge-green">適應分: {route["dynamic_score"]}</span>'
+        nursery_badge = '<span class="badge-feature">🍼 設母嬰室</span>' if route["has_nursery"] else ''
+
         nav_url = f"https://uri.amap.com/navigation?from={route['origin']},Start&to={route['destination']},{urllib.parse.quote(route['dest_name'])}&mode=walk&policy=1&src=mypage&callnative=1"
 
         st.markdown(f"""
         <div class="card" style="{'border-left:6px solid #E65100; background-color:#FFFDE7;' if is_best else ''}">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <h4 style="margin:0; color:#1B5E20;">{route['name']}</h4>
+                <h4 style="margin:0; color:#1B5E20; font-size:1.15rem;">{route['name']} {nursery_badge}</h4>
                 {badge}
             </div>
-            <p style="color:#444; margin-bottom:8px;">{route['desc']}</p>
-            <div style="color:#2E7D32; line-height:1.6; margin-bottom:12px;">
-                <b>📏 長度：</b> {route['length']} | <b>⏱️ 時間：</b> {route['time']} | <b>⛰️ 坡度：</b> <b style="color:#0277BD;">{route['slope']}</b> | <b>🌳 樹蔭：</b> {route['shade']}%
+            <p style="font-size:0.88rem; color:#555; margin-bottom:8px;">{route['desc']}</p>
+            <div style="font-size:0.83rem; color:#333; line-height:1.6; margin-bottom:12px;">
+                <b>📏 長度：</b> {route['length']} | <b>⏱️ 時間：</b> {route['time']} | <b>⛰️ 坡度：</b> <b style="color:#0277BD;">{route['slope']}</b><br>
+                <b>🌳 樹蔭：</b> {route['shade']}% | <b>🚶‍♂️ 實時人數：</b> <b style="color:#EF6C00;">{route['live_crowd']} 人</b>
             </div>
             <a href="{nav_url}" target="_blank" style="text-decoration:none;">
-                <div style="background-color:#1B5E20; color:white; text-align:center; padding:10px; border-radius:10px; font-weight:bold;">
-                    🧭 開啟地圖導航
+                <div style="
+                    background-color:#1B5E20; color:white; text-align:center;
+                    padding:10px; border-radius:8px; font-weight:bold; font-size:0.95rem;
+                ">
+                    🧭 開啟路線地圖導航
                 </div>
             </a>
         </div>
         """, unsafe_allow_html=True)
 
+
+# ==================== 7. 功能頁面 2：🎒 隨行裝備 (預設全部未勾選) ====================
 elif st.session_state.current_page == "gear":
     st.markdown('<div class="back-btn">', unsafe_allow_html=True)
     if st.button("← 返回主頁面", key="back_gear"):
@@ -548,65 +645,79 @@ elif st.session_state.current_page == "gear":
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # 氣象手動覆蓋與模擬調試控制面板 (大功能 2 手動模擬)
-    with st.expander("🌤️ 手動氣象模擬 / 測試調試面板", expanded=st.session_state.override_weather):
-        st.session_state.override_weather = st.checkbox("開啟手動氣象模擬 (覆蓋 API 數據)", value=st.session_state.override_weather, key="override_gear")
+    with st.expander("🛠️ 手動氣象模擬"):
+        was_override = st.session_state.override_weather
+        st.session_state.override_weather = st.checkbox("開啟手動氣象模擬", value=st.session_state.override_weather, key="gear_sim_toggle")
+        
+        if was_override and not st.session_state.override_weather:
+            update_weather_and_aqi()
+            st.rerun()
+
         if st.session_state.override_weather:
-            st.info("💡 已啟用氣象模擬模式，您可以隨意調節以下環境數值測試裝備動態推薦：")
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                st.session_state.global_temp = st.slider("🌡️ 氣溫 (°C)", -5.0, 40.0, float(st.session_state.global_temp), key="temp_g")
-                st.session_state.global_uv = st.slider("☀️ 紫外線 (UV)", 0.0, 12.0, float(st.session_state.global_uv), key="uv_g")
-            with c2:
-                st.session_state.global_rain = st.checkbox("🌧️ 是否降雨", value=st.session_state.global_rain, key="rain_g")
-                st.session_state.global_wind = st.slider("🌬️ 風速 (km/h)", 0.0, 60.0, float(st.session_state.global_wind), key="wind_g")
-            with c3:
-                st.session_state.global_pm25 = st.slider("🍃 PM2.5 (μg/m³)", 0.0, 200.0, float(st.session_state.global_pm25), key="pm25_g")
+            st.session_state.global_temp = st.slider("🌡️ 氣溫 (°C)", 10.0, 38.0, float(st.session_state.global_temp), key="g_temp")
+            st.session_state.global_uv = st.slider("☀️ 紫外線 (UV Index)", 0.0, 12.0, float(st.session_state.global_uv), key="g_uv")
+            st.session_state.global_pm25 = st.slider("🍃 PM2.5", 5.0, 150.0, float(st.session_state.global_pm25), key="g_pm25")
+            st.session_state.global_pm10 = st.slider("🌫️ 懸浮微粒 (PM10)", 10.0, 200.0, float(st.session_state.global_pm10), key="g_pm10")
+            st.session_state.global_rain = st.checkbox("🌧️ 是否模擬降雨", value=st.session_state.global_rain, key="g_rain")
+
+    weather_tag_html = '<span class="badge-sim">🛠️ 手動模擬數據中</span>' if st.session_state.override_weather else '<span style="color:#2E7D32; font-size:0.85rem; font-weight:bold;">(📡 實時連線)</span>'
+    st.markdown(f"##### ☁️ 當前氣象數據 {weather_tag_html}", unsafe_allow_html=True)
+
+    r1, r2, r3, r4 = st.columns(4)
+    with r1:
+        st.markdown(f"""<div class="metric-card"><div class="metric-title">🌡️ 氣溫</div><div class="metric-value">{st.session_state.global_temp:.1f}°C</div></div>""", unsafe_allow_html=True)
+    with r2:
+        st.markdown(f"""<div class="metric-card"><div class="metric-title">☀️ 紫外線</div><div class="metric-value">UV {st.session_state.global_uv:.1f}</div></div>""", unsafe_allow_html=True)
+    with r3:
+        st.markdown(f"""<div class="metric-card"><div class="metric-title">🍃 PM2.5</div><div class="metric-value">{st.session_state.global_pm25:.1f}</div></div>""", unsafe_allow_html=True)
+    with r4:
+        rain_text = "是" if st.session_state.global_rain else "否"
+        st.markdown(f"""<div class="metric-card"><div class="metric-title">🌧️ 是否降雨</div><div class="metric-value">{rain_text}</div></div>""", unsafe_allow_html=True)
+
+    st.write("")
 
     st.markdown("""
     <div class="card">
-        <h3 style="margin-top:0px; color:#1B5E20;">🎒 氣象動態隨行裝備建議</h3>
-        <p style="margin-bottom:0; color:#2E7D32;">根據當前評估的實時/模擬氣象狀態，動態生成最適宜的裝備建議清單：</p>
+        <h3 style="margin-top:0px; color:#1E5631;">🎒 當前氣象動態推薦隨行裝備</h3>
+        <p style="font-size:0.9rem; margin-bottom:0;">系統根據目前的<b>氣溫、紫外線、是否降雨與懸浮微粒</b>數據精算出的推薦清單 (請依需求勾選完成)：</p>
     </div>
     """, unsafe_allow_html=True)
 
-    # 1. 基礎必備裝備 (預設不勾選)
-    st.markdown("##### 📌 出行基礎必備裝備")
-    st.checkbox("🍼 **兒童專用水壺 / 保溫水杯**", value=False, key="gear_base_1")
-    st.checkbox("🧻 **濕紙巾與消毒用品**", value=False, key="gear_base_2")
-    st.checkbox("🩹 **隨身 OK 繃與急救護理包**", value=False, key="gear_base_3")
+    st.markdown("##### 📌 出行必備基礎裝備")
+    st.checkbox("🍼 **兒童水壺 / 保溫杯** (隨時補充水分)", value=False, key="gear_water")
+    st.checkbox("🧻 **濕紙巾與消毒個人用品**", value=False, key="gear_wipes")
+    st.checkbox("🩹 **隨身創可貼與急救盒**", value=False, key="gear_firstaid")
 
-    # 2. 依據降雨動態推薦 (預設不勾選)
     if st.session_state.global_rain:
-        st.markdown("##### 🌧️ 降雨天氣專屬裝備")
-        st.checkbox("🌧️ **推車全覆蓋透氣防雨罩**", value=False, key="gear_rain_1")
-        st.checkbox("☂️ **親子防風折疊雨傘**", value=False, key="gear_rain_2")
-        st.checkbox("👕 **備用乾爽替換衣物 1 套**", value=False, key="gear_rain_3")
+        st.markdown("##### 🌧️ 是否降雨：當前降雨專屬裝備")
+        st.checkbox("🌧️ **嬰兒車透氣防雨罩 & 親子大雨傘**", value=False, key="gear_rain1")
+        st.checkbox("🌂 **備用寶寶乾爽衣物 1 套 (防水袋裝)**", value=False, key="gear_rain2")
+        st.checkbox("👟 **兒童防滑雨鞋**", value=False, key="gear_rain3")
 
-    # 3. 依據紫外線 (UV) 動態推薦 (預設不勾選)
-    if st.session_state.global_uv >= 2.0:
-        st.markdown("##### ☀️ 高紫外線防曬裝備 (UV ≥ 2.0)")
-        st.checkbox("☀️ **兒童物理防曬乳 (SPF50+ / PA+++)**", value=False, key="gear_uv_1")
-        st.checkbox("🧢 **大簷防曬遮陽帽**", value=False, key="gear_uv_2")
-        if st.session_state.global_uv >= 5.0:
-            st.checkbox("🕶️ **兒童抗 UV400 太陽眼鏡**", value=False, key="gear_uv_3")
+    cur_uv = st.session_state.global_uv
+    if cur_uv >= 2.5:
+        st.markdown(f"##### ☀️ 防曬護膚專屬裝備 (當前 UV {cur_uv:.1f} 偏強)")
+        st.checkbox("☀️ **兒童高效防曬乳 (SPF50+)**", value=False, key="gear_uv_high1")
+        st.checkbox("🧢 **推車抗 UV 遮陽罩 & 親子大簷太陽帽**", value=False, key="gear_uv_high2")
+        st.checkbox("🕶️ **兒童太陽眼鏡**", value=False, key="gear_uv_high3")
 
-    # 4. 依據溫度動態推薦 (預設不勾選)
-    if st.session_state.global_temp >= 25.0:
-        st.markdown("##### 🌡️ 高溫防暑降溫裝備 (≥ 25°C)")
-        st.checkbox("🌬️ **便攜推車靜音小風扇**", value=False, key="gear_hot_1")
-        st.checkbox("🧊 **退熱冰涼貼 / 保冷包**", value=False, key="gear_hot_2")
-    elif st.session_state.global_temp <= 18.0:
-        st.markdown("##### ❄️ 低溫防風保暖裝備 (≤ 18°C)")
-        st.checkbox("🧥 **兒童防風禦寒外套**", value=False, key="gear_cold_1")
-        st.checkbox("🍼 **暖心溫熱水壺**", value=False, key="gear_cold_2")
+    cur_t = st.session_state.global_temp
+    if cur_t >= 26.0:
+        st.markdown(f"##### 🌡️ 高溫防暑專屬裝備 (當前 {cur_t:.1f}°C 偏熱)")
+        st.checkbox("🌬️ **夾式推車靜音小風扇** *(防止寶寶高溫中暑)*", value=False, key="gear_temp_hot1")
+        st.checkbox("🧊 **兒童退熱貼 / 電解質水補給包**", value=False, key="gear_temp_hot2")
+    elif cur_t <= 20.0:
+        st.markdown(f"##### 🧥 保暖防風專屬裝備 (當前 {cur_t:.1f}°C 偏涼)")
+        st.checkbox("🧥 **兒童保暖防風外套 & 小毛毯**", value=False, key="gear_temp_cold1")
+        st.checkbox("☕ **熱水保溫壺**", value=False, key="gear_temp_cold2")
 
-    # 5. 依據空氣質素 PM2.5 動態推薦 (預設不勾選)
-    if st.session_state.global_pm25 >= 35.0:
-        st.markdown("##### 😷 空氣質素護航裝備 (PM2.5 偏高)")
-        st.checkbox("😷 **兒童防護口罩 (KN95 / 立體親膚)**", value=False, key="gear_pm_1")
-        st.checkbox("🧴 **生理鹽水洗鼻噴霧**", value=False, key="gear_pm_2")
+    cur_pm25 = st.session_state.global_pm25
+    if cur_pm25 >= 15.0:
+        st.markdown(f"##### 😷 懸浮微粒：呼吸道護理裝備 (當前 PM2.5 {cur_pm25:.1f})")
+        st.checkbox("😷 **兒童高防護透氣口罩**", value=False, key="gear_pm_high")
 
+
+# ==================== 8. 功能頁面 3：🪰 多頻率驅聲波 ====================
 elif st.session_state.current_page == "audio":
     st.markdown('<div class="back-btn">', unsafe_allow_html=True)
     if st.button("← 返回主頁面", key="back_audio"):
@@ -616,15 +727,16 @@ elif st.session_state.current_page == "audio":
 
     st.markdown("""
     <div class="card">
-        <h3 style="margin-top:0px; color:#1B5E20;">🔊 多頻率驅蚊驅蟲器</h3>
-        <p style="margin-bottom:0; color:#2E7D32;">選擇特定昆蟲頻率，開啟防護後即刻切換背景發聲。</p>
+        <h3 style="margin-top:0px; color:#1E5631;">🪰 多頻率驅蚊驅蟲器</h3>
+        <p style="font-size:0.9rem; margin-bottom:0;">選擇特定昆蟲頻率，啟動後離開此頁面聲波依然保持播放。</p>
     </div>
     """, unsafe_allow_html=True)
 
     freq_options = [
         "17.4 kHz - 模擬雄蚊翅聲 (驅避咬人母蚊)",
         "14.8 kHz - 蠓蟲/小咬 (黑翅蕈蚋) 專用",
-        "12.5 kHz - 蜂類與飛蟲 警戒頻率"
+        "12.5 kHz - 蜂類與飛蟲 警戒頻率",
+        "19.0 kHz - 草叢綜合超聲波 (大人小孩無感)"
     ]
 
     selected_idx = freq_options.index(st.session_state.selected_insect_freq) if st.session_state.selected_insect_freq in freq_options else 0
@@ -634,9 +746,17 @@ elif st.session_state.current_page == "audio":
     freq_map = {
         "17.4 kHz - 模擬雄蚊翅聲 (驅避咬人母蚊)": 17400,
         "14.8 kHz - 蠓蟲/小咬 (黑翅蕈蚋) 專用": 14800,
-        "12.5 kHz - 蜂類與飛蟲 警戒頻率": 12500
+        "12.5 kHz - 蜂類與飛蟲 警戒頻率": 12500,
+        "19.0 kHz - 草叢綜合超聲波 (大人小孩無感)": 19000
     }
     current_hz = freq_map[freq_choice]
+
+    st.markdown(f"""
+    <div class="card" style="text-align: center;">
+        <h2 style="color: #2E7D32; font-size: 2.1rem; margin:0;">{current_hz / 1000:.1f} kHz</h2>
+        <p style="font-size:0.85rem; color:#666; margin-top:4px;">選擇頻率：<b>{freq_choice.split('-')[1].strip()}</b></p>
+    </div>
+    """, unsafe_allow_html=True)
 
     col_a1, col_a2 = st.columns(2)
     with col_a1:
@@ -651,8 +771,8 @@ elif st.session_state.current_page == "audio":
             st.rerun()
 
     audio_js_template = """
-    <div style="text-align:center; padding:12px; background:#E8F5E9; border-radius:10px; border:1px solid #C8E6C9; margin-top:10px;">
-        <p style="font-size:1.1rem; color:#1B5E20; font-weight:bold; margin:0;">
+    <div style="text-align:center; padding:10px; background:#F1F8E9; border-radius:10px;">
+        <p style="font-size:0.9rem; color:#2E7D32; font-weight:bold; margin:0;">
             __STATUS_TEXT__
         </p>
     </div>
@@ -674,13 +794,15 @@ elif st.session_state.current_page == "audio":
         }
     </script>
     """
-    status_str = "🟢 超聲波背景持續防護中..." if st.session_state.audio_active else "🔴 聲波目前未啟動"
+    status_str = "🟢 超聲波背景持續播放中..." if st.session_state.audio_active else "🔴 聲波目前未啟動"
     audio_js = audio_js_template.replace("__STATUS_TEXT__", status_str)\
                                 .replace("__IS_ACTIVE__", 'true' if st.session_state.audio_active else 'false')\
                                 .replace("__CURRENT_HZ__", str(current_hz))
 
-    components.html(audio_js, height=80)
+    st.components.v1.html(audio_js, height=75)
 
+
+# ==================== 9. 功能頁面 4：🚨 一鍵求救專區 ====================
 elif st.session_state.current_page == "sos":
     st.markdown('<div class="back-btn">', unsafe_allow_html=True)
     if st.button("← 返回主頁面", key="back_sos"):
@@ -690,57 +812,124 @@ elif st.session_state.current_page == "sos":
 
     st.markdown("""
     <div class="card" style="border-left:5px solid #C62828; background-color:#FFEBEE;">
-        <h3 style="margin-top:0px; color:#B71C1C;">🚨 一鍵求救與精準 GPS 定位</h3>
-        <p style="color:#C62828; margin-bottom:0;">自動抓取實時經緯度，點擊即可複製求救文字簡訊或直接撥打緊急熱線：</p>
+        <h3 style="margin-top:0px; color:#B71C1C;">🚨 一鍵求救與精準 GPS 定位通報</h3>
+        <p style="font-size:0.9rem; color:#C62828; margin-bottom:0;">如在戶外遇到緊急情況，請保持冷靜。系統已自動獲取您的 GPS 並比對地區緊急求救熱線：</p>
     </div>
     """, unsafe_allow_html=True)
 
     sos_js_template = """
     <div style="text-align:center; padding:10px; background-color:#FFEBEE; border-radius:10px; border:1px solid #FFCDD2; margin-bottom:12px;">
-        <div id="sosGpsStatus" style="font-size:1.05rem; color:#C62828; font-weight:bold;">
-            📡 正在連線衛星感應經緯度...
+        <div id="sosGpsStatus" style="font-size:0.9rem; color:#C62828; font-weight:bold; margin-bottom:6px;">
+            📡 正在感應當前衛星精確一鍵求救 GPS 座標...
         </div>
+        <div id="regionNotice" style="font-size:0.85rem; color:#B71C1C; font-weight:bold;"></div>
     </div>
 
     <div style="background-color:#FFFFFF; border-radius:12px; padding:16px; border-left:5px solid #C62828; box-shadow:0 2px 10px rgba(0,0,0,0.04); margin-bottom:16px; text-align:center;">
-        <button id="copyBtn" onclick="copySosText()" style="width:100%; background-color:#C62828; color:white; font-size:1.2rem; font-weight:bold; padding:14px; border:none; border-radius:10px; cursor:pointer;">
-            📋 一鍵複製求救簡訊 (含精確經緯度)
-        </button>
-        <textarea id="sosTextarea" readonly style="width:100%; height:90px; background-color:#F9F9F9; border-radius:8px; border:1px solid #FFCDD2; padding:10px; font-size:1.0rem; margin-top:10px; box-sizing:border-box;"></textarea>
+        <h4 style="color:#C62828; margin-top:0; font-size:1.05rem;">📋 一鍵複製精準 GPS 求救簡訊內容</h4>
+        
+        <div style="margin-bottom:12px;">
+            <button id="copyBtn" onclick="copySosText()" style="width:100%; background-color:#C62828; color:white; font-size:1.1rem; font-weight:bold; padding:14px; border:none; border-radius:10px; cursor:pointer; box-shadow:0 4px 10px rgba(198,40,40,0.3);">
+                📋 一鍵複製求救簡訊內容 (含實時經緯度)
+            </button>
+        </div>
+
+        <p style="font-size:0.85rem; color:#666; text-align:left; margin-bottom:4px; font-weight:bold;">📱 將複製的內文貼至微信、簡訊發送給救援隊：</p>
+        <textarea id="sosTextarea" readonly style="width:100%; height:115px; background-color:#F9F9F9; border-radius:8px; border:1px solid #FFCDD2; padding:10px; font-family:monospace; font-size:0.85rem; box-sizing:border-box; color:#333;"></textarea>
     </div>
 
-    <div style="display:flex; gap:10px;">
-        <a href="tel:999" style="flex:1; text-decoration:none;">
-            <div style="background-color:#C62828; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold; font-size:1.1rem;">
-                📞 撥打 999
-            </div>
-        </a>
-        <a href="tel:110" style="flex:1; text-decoration:none;">
-            <div style="background-color:#0277BD; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold; font-size:1.1rem;">
-                📞 撥打 110
-            </div>
-        </a>
+    <div id="phoneArea" style="margin-bottom:16px;">
+        <h5 style="margin-bottom:8px; color:#1B5E20;">📞 當前地區求助熱線直撥</h5>
+        <div style="display:flex; gap:10px;">
+            <a id="pBtn1" href="tel:110" style="flex:1; text-decoration:none;">
+                <div style="background-color:#C62828; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold;">
+                    📞 110 報案
+                </div>
+            </a>
+            <a id="pBtn2" href="tel:119" style="flex:1; text-decoration:none;">
+                <div style="background-color:#C62828; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold;">
+                    📞 119 消防
+                </div>
+            </a>
+            <a id="pBtn3" href="tel:120" style="flex:1; text-decoration:none;">
+                <div style="background-color:#C62828; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold;">
+                    📞 120 急救
+                </div>
+            </a>
+        </div>
     </div>
 
     <script>
+        function generateSosText(lat, lon) {
+            var nick = "__USER_NICK__";
+            return "【🚨 SOS 一鍵求救通報】\\n" +
+                   "求救人暱稱：" + nick + "\\n" +
+                   "當前精確 GPS 座標：緯度 " + lat.toFixed(5) + ", 經度 " + lon.toFixed(5) + "\\n" +
+                   "地圖位置導航：https://maps.google.com/?q=" + lat.toFixed(5) + "," + lon.toFixed(5) + "\\n" +
+                   "請救援隊儘快聯繫搜救！";
+        }
+
         function copySosText() {
             var ta = document.getElementById("sosTextarea");
             ta.select();
-            document.execCommand('copy');
-            document.getElementById("copyBtn").innerText = "✅ 已複製！請至微信/簡訊貼上發送";
-            document.getElementById("copyBtn").style.backgroundColor = "#2E7D32";
+            ta.setSelectionRange(0, 99999);
+            try {
+                document.execCommand('copy');
+                document.getElementById("copyBtn").innerText = "✅ 複製成功！請至通訊軟體貼上發送";
+                document.getElementById("copyBtn").style.backgroundColor = "#2E7D32";
+                setTimeout(function(){
+                    document.getElementById("copyBtn").innerText = "📋 一鍵複製求救簡訊內容 (含實時經緯度)";
+                    document.getElementById("copyBtn").style.backgroundColor = "#C62828";
+                }, 3000);
+            } catch(e) {
+                alert("請手動長按選擇上方文字框進行複製。");
+            }
+        }
+
+        function updateRegionPhone(lat, lon) {
+            var isRegionA = (lat >= 22.10 && lat <= 22.22 && lon >= 113.50 && lon <= 113.60);
+            var isRegionB = (lat >= 22.15 && lat <= 22.58 && lon >= 113.80 && lon <= 114.40);
+
+            if (isRegionA) {
+                document.getElementById("regionNotice").innerHTML = "📍 推薦優先撥打 999 或 110/119";
+                document.getElementById("pBtn1").href = "tel:999";
+                document.getElementById("pBtn1").children[0].innerText = "📞 999 報案";
+                document.getElementById("pBtn1").children[0].style.backgroundColor = "#0277BD";
+            } else if (isRegionB) {
+                document.getElementById("regionNotice").innerHTML = "📍 推薦優先撥打 999";
+                document.getElementById("pBtn1").href = "tel:999";
+                document.getElementById("pBtn1").children[0].innerText = "📞 999 求助";
+                document.getElementById("pBtn1").children[0].style.backgroundColor = "#0277BD";
+            } else {
+                document.getElementById("regionNotice").innerHTML = "📍 全國地區預設緊急熱線：110 (公安) / 119 (消防) / 120 (醫療)";
+            }
         }
 
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(function(position) {
                 var lat = position.coords.latitude;
                 var lon = position.coords.longitude;
-                document.getElementById("sosGpsStatus").innerHTML = "✅ 已鎖定 GPS 座標：" + lat.toFixed(5) + ", " + lon.toFixed(5);
-                var txt = "【🚨 SOS 求救通報】\\n我當前經緯度： " + lat.toFixed(5) + ", " + lon.toFixed(5) + "\\n地圖位置：https://maps.google.com/?q=" + lat.toFixed(5) + "," + lon.toFixed(5);
+                var accuracy = Math.round(position.coords.accuracy);
+                
+                document.getElementById("sosGpsStatus").innerHTML = "✅ 已鎖定極速衛星 GPS 座標 (誤差 ±" + accuracy + "米)";
+                
+                var txt = generateSosText(lat, lon);
                 document.getElementById("sosTextarea").value = txt;
+                updateRegionPhone(lat, lon);
+            }, function(error) {
+                document.getElementById("sosGpsStatus").innerHTML = "⚠️ 請允許定位權限以感應精確求救座標";
+            }, {
+                enableHighAccuracy: true,
+                maximumAge: 0,
+                timeout: 8000
             });
         }
     </script>
     """
 
-    components.html(sos_js_template, height=320)
+    nick_name = st.session_state.user_nickname if st.session_state.user_nickname else "未設定暱稱遊客"
+    rendered_sos_html = sos_js_template.replace("__USER_NICK__", str(nick_name))
+
+    st.components.v1.html(rendered_sos_html, height=360)
+
+    st.info("💡 提示：點擊上方「一鍵複製」按鈕後，打開微信、簡訊或對講軟體貼上，即可將精確 GPS 座標發給救援隊！")

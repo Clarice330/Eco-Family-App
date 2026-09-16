@@ -1,7 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-🍀 絲野仙蹤 (Eco‑Family)
-已修復：將 HTML 按鈕與原生按鈕字重一律強制鎖定為 font-weight: 400 (normal)，解決少許偏粗問題
+🍀 絲野仙蹤 (Eco-Family)
+親子綠色呼吸智慧隨行助手
+
+功能：
+1. 🗺️ 智慧路線規劃
+2. 🎒 隨行裝備
+3. 🪰 多頻率驅蚊驅蟲器
+4. 🚨 一鍵求救與 GPS 定位
+5. 🔍 Kimi AI 動植物識別（固定 kimi-k2.6）
+
+執行：
+    streamlit run 發明原型.py
+
+依賴：
+    pip install streamlit requests pandas
 """
 import streamlit as st
 import streamlit.components.v1 as components
@@ -11,8 +24,34 @@ import urllib.parse
 import time
 import math
 import json
+import base64
 
-# SessionState初始化
+# ============================================================
+# 🔑 Kimi API Key
+# ============================================================
+KIMI_API_KEY = "sk-NKcBPK2IVcuyy6FPPtxmCKVPsqK2ditGFBhkrfnDF7oYpzCp"
+
+# ============================================================
+# 🤖 唯一使用的模型（寫死，無其他選項）
+# ============================================================
+KIMI_MODEL = "kimi-k2.6"
+# ============================================================
+
+
+# ============================================================
+# 頁面設定（必須是第一個 st 命令）
+# ============================================================
+st.set_page_config(
+    page_title="絲野仙蹤 Eco-Family",
+    page_icon="🍀",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
+
+
+# ============================================================
+# SessionState 初始化
+# ============================================================
 query_params = st.query_params
 if "page" in query_params and query_params["page"]:
     st.session_state.current_page = query_params["page"]
@@ -53,14 +92,18 @@ if "selected_insect_freq" not in st.session_state:
 if "current_page" not in st.session_state:
     st.session_state.current_page = "menu"
 
-st.set_page_config(
-    page_title="絲野仙蹤 Eco‑Family",
-    page_icon="🍀",
-    layout="centered",
-    initial_sidebar_state="collapsed"
-)
+# AI 識別狀態
+if "identify_result" not in st.session_state:
+    st.session_state.identify_result = None
+if "identify_history" not in st.session_state:
+    st.session_state.identify_history = []
+if "last_image_id" not in st.session_state:
+    st.session_state.last_image_id = None
 
-# CSS：強制將字重設定為最標準的 400 (normal)
+
+# ============================================================
+# CSS 樣式
+# ============================================================
 if st.session_state.is_elder_mode:
     text_scale = "1.45"
     big_btn_text = "1.3rem"
@@ -92,14 +135,19 @@ css_text = (
     .badge-sim{background-color:#F57F17;color:white;padding:3px 8px;border-radius:8px;font-size:calc(0.8rem*var(--text-scale));font-weight:bold;}
     .badge-feature{background-color:#0277BD;color:white;padding:2px 8px;border-radius:6px;font-size:calc(0.78rem*var(--text-scale));font-weight:bold;margin-left:4px;}
     .back-btn button{background-color:#E8F5E9!important;color:#1B5E20!important;font-weight:bold!important;padding:8px 16px!important;font-size:calc(0.95rem*var(--text-scale))!important;border-radius:8px!important;border:1px solid #C8E6C9!important;margin-bottom:16px!important;height:auto!important;min-height:auto!important;}
+    .history-card{background-color:#FFFFFF;border-radius:10px;padding:12px;border-left:4px solid #0277BD;box-shadow:0 2px 8px rgba(0,0,0,0.03);margin-bottom:10px;}
 """
 )
 st.markdown(f"<style>{css_text}</style>", unsafe_allow_html=True)
 
+
+# ============================================================
+# 工具函式
+# ============================================================
 def update_weather_and_aqi():
     if not st.session_state.override_weather:
         try:
-            w_url = "https://api.open‑meteo.com/v1/forecast?latitude=22.1987&longitude=113.5439&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,uv_index"
+            w_url = "https://api.open-meteo.com/v1/forecast?latitude=22.1987&longitude=113.5439&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,uv_index"
             res_w = requests.get(w_url, timeout=3)
             if res_w.status_code == 200:
                 cur_w = res_w.json().get("current", {})
@@ -107,7 +155,7 @@ def update_weather_and_aqi():
                 st.session_state.global_uv = float(cur_w.get("uv_index", 1.2))
                 st.session_state.global_rain = True if cur_w.get("precipitation", 0) > 0.1 else False
                 st.session_state.global_wind = float(cur_w.get("wind_speed_10m", 10.0))
-            aq_url = "https://air‑quality‑api.open‑meteo.com/v1/air‑quality?latitude=22.1987&longitude=113.5439&current=pm10,pm2_5,us_aqi"
+            aq_url = "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=22.1987&longitude=113.5439&current=pm10,pm2_5,us_aqi"
             res_aq = requests.get(aq_url, timeout=3)
             if res_aq.status_code == 200:
                 cur_aq = res_aq.json().get("current", {})
@@ -117,31 +165,106 @@ def update_weather_and_aqi():
         except Exception:
             pass
 
+
+def call_kimi_vision(image_bytes, mime_type, system_prompt):
+    """
+    呼叫 Kimi 視覺模型（固定 kimi-k2.6）進行圖片辨識。
+    回傳 (成功?, 內容或錯誤訊息)
+    """
+    try:
+        base64_img = base64.b64encode(image_bytes).decode("utf-8")
+        headers = {
+            "Authorization": f"Bearer {KIMI_API_KEY.strip()}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": KIMI_MODEL,  # 永遠使用 kimi-k2.6
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": system_prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{mime_type};base64,{base64_img}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "temperature": 1
+        }
+        res = requests.post(
+            "https://api.moonshot.cn/v1/chat/completions",
+            json=payload,
+            headers=headers,
+            timeout=60
+        )
+        if res.status_code == 200:
+            data = res.json()
+            content = data["choices"][0]["message"]["content"]
+            return True, content
+        else:
+            try:
+                err_json = res.json()
+            except Exception:
+                err_json = {}
+            err_msg = err_json.get("error", {}).get("message", res.text)
+            return False, f"HTTP {res.status_code}：{err_msg}"
+    except requests.exceptions.Timeout:
+        return False, "請求逾時，請稍後再試或改用較小的圖片。"
+    except requests.exceptions.ConnectionError:
+        return False, "無法連線至 Kimi API，請檢查網路。"
+    except Exception as e:
+        return False, f"未預期錯誤：{str(e)}"
+
+
+def build_system_prompt(style):
+    if "親子" in style:
+        style_prompt = "請以親切、富教育意義且適合小朋友聽的生動口吻解說。"
+    elif "專業" in style:
+        style_prompt = "請以嚴謹的生物學專業角度解說形態特徵、科屬分類與生態習性。"
+    else:
+        style_prompt = "請重點著重於戶外接觸安全性、是否有毒性/刺針/過敏原，以及緊急處理原則。"
+    return (
+        f"你是一位專業的野生動植物學家與生態科普專家。{style_prompt}\n"
+        "請分析圖片中的動植物或昆蟲，並以下列條理分明的格式輸出：\n"
+        "1. 【物種名稱】：中文常用名（拉丁學名）\n"
+        "2. 【生態特徵與習性】：外形重點、棲地與生活習性\n"
+        "3. 【💡 親子趣聞 / 知識小檔案】：有趣的小知識或故事\n"
+        "4. 【⚠️ 戶外安全與防護提示】：是否具毒性、刺針、咬人風險，以及觀察時的注意事項\n"
+        "如果圖片中沒有可辨識的動植物，請直接說明「無法從這張圖片辨識出動植物」。"
+    )
+
+
 update_weather_and_aqi()
 
-# 頂部Header
+
+# ============================================================
+# 頂部 Header
+# ============================================================
 audio_badge_text = "🟢 驅蟲運作" if st.session_state.audio_active else "🔴 驅蟲未啟"
 col_head1, col_head2, col_head3 = st.columns([1.5, 0.9, 0.9])
 with col_head1:
     st.markdown(
-        '<div><div class="brand-title" style="font-size:calc(1.55rem*var(--text-scale));font-weight:bold;color:#1B5E20;">🍀 絲野仙蹤 Eco‑Family</div><div class="brand-sub" style="font-size:calc(0.8rem*var(--text-scale));color:#666;">親子綠色呼吸智慧隨行助手</div></div>',
+        '<div><div class="brand-title" style="font-size:calc(1.55rem*var(--text-scale));font-weight:bold;color:#1B5E20;">🍀 絲野仙蹤 Eco-Family</div><div class="brand-sub" style="font-size:calc(0.8rem*var(--text-scale));color:#666;">親子綠色呼吸智慧隨行助手</div></div>',
         unsafe_allow_html=True
     )
 with col_head2:
-    st.markdown('<div class="audio-header-btn">', unsafe_allow_html=True)
     if st.button(f"🔊 {audio_badge_text}", key="top_right_audio_btn"):
         st.session_state.current_page = "audio"
         st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
 with col_head3:
-    st.markdown('<div class="sos-header-btn">', unsafe_allow_html=True)
     if st.button("🚨 一鍵求救", key="top_right_sos_btn"):
         st.session_state.current_page = "sos"
         st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
 st.markdown("<hr style='margin-top:5px;margin-bottom:15px;border-color:#E8F5E9;'>", unsafe_allow_html=True)
 
-# ========== 主選單 ==========
+
+# ============================================================
+# 主選單
+# ============================================================
 if st.session_state.current_page == "menu":
     elder_toggle = st.toggle("👵 關愛大字體模式 (老年版)", value=st.session_state.is_elder_mode)
     if elder_toggle != st.session_state.is_elder_mode:
@@ -153,45 +276,14 @@ if st.session_state.current_page == "menu":
     if st.button("🎒 隨行裝備", key="btn_m2", use_container_width=True):
         st.session_state.current_page = "gear"
         st.rerun()
+    if st.button("🔍 親子生態動植物識別", key="btn_m3", use_container_width=True):
+        st.session_state.current_page = "eco_identify"
+        st.rerun()
 
-    # 動植物識別：強制 font-weight: 400 (400 / 500)，移除瀏覽器預設粗體渲染
-    btn_font_size = "1.3rem" if st.session_state.is_elder_mode else "1.03rem"
-    btn_font_weight = "500" if st.session_state.is_elder_mode else "400"
-    components.html(
-        f"""
-        <button onclick="window.open('https://eddychan912-blip.github.io/eco-tracker11/', '_blank')" 
-                style="
-                    width: 100%;
-                    height: 76px;
-                    background-color: #FFFFFF;
-                    color: #1B5E20;
-                    border-radius: 16px;
-                    border: 2px solid #E8F5E9;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.04);
-                    font-size: {btn_font_size};
-                    font-weight: {btn_font_weight};
-                    -webkit-font-smoothing: antialiased;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-                    transition: all 0.2s ease-in-out;
-                    margin: 0;
-                    padding: 0 8px;
-                    outline: none;
-                    line-height: 1.2;
-                "
-                onmouseover="this.style.backgroundColor='#F1F8E9'; this.style.borderColor='#2E7D32'; this.style.boxShadow='0 6px 20px rgba(46,125,50,0.18)'; this.style.transform='translateY(-2px)';"
-                onmouseout="this.style.backgroundColor='#FFFFFF'; this.style.borderColor='#E8F5E9'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.04)'; this.style.transform='none';"
-        >
-            🔍 親子生態動植物識別
-        </button>
-        """,
-        height=90
-    )
 
-# ========== 智慧路線規劃 ==========
+# ============================================================
+# 智慧路線規劃
+# ============================================================
 elif st.session_state.current_page == "routes":
     st.markdown('<div class="back-btn">', unsafe_allow_html=True)
     if st.button("← 返回主頁面", key="back_routes"):
@@ -210,21 +302,21 @@ elif st.session_state.current_page == "routes":
             st.session_state.global_pm25 = st.slider("🍃 PM2.5", 5.0, 150.0, float(st.session_state.global_pm25), key="r_pm25")
             st.session_state.global_pm10 = st.slider("🌫️ 懸浮微粒 (PM10)", 10.0, 200.0, float(st.session_state.global_pm10), key="r_pm10")
             st.session_state.global_rain = st.checkbox("🌧️ 是否模擬降雨", value=st.session_state.global_rain, key="r_rain")
-    weather_tag_html = '<span class="badge‑sim">🛠️ 手動模擬數據中</span>' if st.session_state.override_weather else '<span style="color:#2E7D32;font‑size:0.85rem;font‑weight:bold;">(📡 實時連線)</span>'
+    weather_tag_html = '<span class="badge-sim">🛠️ 手動模擬數據中</span>' if st.session_state.override_weather else '<span style="color:#2E7D32;font-size:0.85rem;font-weight:bold;">(📡 實時連線)</span>'
     st.markdown(f"##### ☁️ 當前氣象數據 {weather_tag_html}", unsafe_allow_html=True)
     r1, r2, r3, r4 = st.columns(4)
     with r1:
-        st.markdown(f'<div class="metric‑card"><div class="metric‑title">🌡️ 氣溫</div><div class="metric‑value">{st.session_state.global_temp:.1f}°C</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-card"><div class="metric-title">🌡️ 氣溫</div><div class="metric-value">{st.session_state.global_temp:.1f}°C</div></div>', unsafe_allow_html=True)
     with r2:
-        st.markdown(f'<div class="metric‑card"><div class="metric‑title">☀️ 紫外線</div><div class="metric‑value">UV {st.session_state.global_uv:.1f}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-card"><div class="metric-title">☀️ 紫外線</div><div class="metric-value">UV {st.session_state.global_uv:.1f}</div></div>', unsafe_allow_html=True)
     with r3:
-        st.markdown(f'<div class="metric‑card"><div class="metric‑title">🍃 PM2.5</div><div class="metric‑value">{st.session_state.global_pm25:.1f}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-card"><div class="metric-title">🍃 PM2.5</div><div class="metric-value">{st.session_state.global_pm25:.1f}</div></div>', unsafe_allow_html=True)
     with r4:
         rain_text = "是" if st.session_state.global_rain else "否"
-        st.markdown(f'<div class="metric‑card"><div class="metric‑title">🌧️ 是否降雨</div><div class="metric‑value">{rain_text}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-card"><div class="metric-title">🌧️ 是否降雨</div><div class="metric-value">{rain_text}</div></div>', unsafe_allow_html=True)
     st.write("")
     st.markdown(
-        '<div class="card"><h3 style="margin‑top:0px;color:#1E5631;">🗺️ 目的地與氣象/設施適應路線規劃</h3><p style="font‑size:0.9rem;margin‑bottom:0;">選擇目的地並可依據<b>坡度需求、母嬰室設施與當前氣象</b>自動調整評分與推薦：</p></div>',
+        '<div class="card"><h3 style="margin-top:0px;color:#1E5631;">🗺️ 目的地與氣象/設施適應路線規劃</h3><p style="font-size:0.9rem;margin-bottom:0;">選擇目的地並可依據<b>坡度需求、母嬰室設施與當前氣象</b>自動調整評分與推薦：</p></div>',
         unsafe_allow_html=True
     )
     unique_destinations = {
@@ -304,8 +396,8 @@ elif st.session_state.current_page == "routes":
         st.warning("⚠️ 目前選取的目的地無符合坡度或母嬰室篩選條件之路線，請嘗試放寬篩選條件。")
     for idx, route in enumerate(sorted_dest_routes):
         is_best = (idx == 0)
-        badge = '<span class="badge‑star">🌟 當前最佳推薦</span>' if is_best else f'<span class="badge‑green">適應分: {route["dynamic_score"]}</span>'
-        nursery_badge = '<span class="badge‑feature">🍼 設母嬰室</span>' if route["has_nursery"] else ''
+        badge = '<span class="badge-star">🌟 當前最佳推薦</span>' if is_best else f'<span class="badge-green">適應分: {route["dynamic_score"]}</span>'
+        nursery_badge = '<span class="badge-feature">🍼 設母嬰室</span>' if route["has_nursery"] else ''
         nav_url = f"https://uri.amap.com/navigation?from={route['origin']},Start&to={route['destination']},{urllib.parse.quote(route['dest_name'])}&mode=walk&policy=1&src=mypage&callnative=1"
         bg_style = "border-left:6px solid #E65100;background-color:#FFFDE7;" if is_best else ""
         st.markdown(
@@ -328,7 +420,10 @@ elif st.session_state.current_page == "routes":
             unsafe_allow_html=True
         )
 
-# ========== 隨行裝備 ==========
+
+# ============================================================
+# 隨行裝備
+# ============================================================
 elif st.session_state.current_page == "gear":
     st.markdown('<div class="back-btn">', unsafe_allow_html=True)
     if st.button("← 返回主頁面", key="back_gear"):
@@ -347,21 +442,21 @@ elif st.session_state.current_page == "gear":
             st.session_state.global_pm25 = st.slider("🍃 PM2.5", 5.0, 150.0, float(st.session_state.global_pm25), key="g_pm25")
             st.session_state.global_pm10 = st.slider("🌫️ 懸浮微粒 (PM10)", 10.0, 200.0, float(st.session_state.global_pm10), key="g_pm10")
             st.session_state.global_rain = st.checkbox("🌧️ 是否模擬降雨", value=st.session_state.global_rain, key="g_rain")
-    weather_tag_html = '<span class="badge‑sim">🛠️ 手動模擬數據中</span>' if st.session_state.override_weather else '<span style="color:#2E7D32;font‑size:0.85rem;font‑weight:bold;">(📡 實時連線)</span>'
+    weather_tag_html = '<span class="badge-sim">🛠️ 手動模擬數據中</span>' if st.session_state.override_weather else '<span style="color:#2E7D32;font-size:0.85rem;font-weight:bold;">(📡 實時連線)</span>'
     st.markdown(f"##### ☁️ 當前氣象數據 {weather_tag_html}", unsafe_allow_html=True)
     r1, r2, r3, r4 = st.columns(4)
     with r1:
-        st.markdown(f'<div class="metric‑card"><div class="metric‑title">🌡️ 氣溫</div><div class="metric‑value">{st.session_state.global_temp:.1f}°C</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-card"><div class="metric-title">🌡️ 氣溫</div><div class="metric-value">{st.session_state.global_temp:.1f}°C</div></div>', unsafe_allow_html=True)
     with r2:
-        st.markdown(f'<div class="metric‑card"><div class="metric‑title">☀️ 紫外線</div><div class="metric‑value">UV {st.session_state.global_uv:.1f}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-card"><div class="metric-title">☀️ 紫外線</div><div class="metric-value">UV {st.session_state.global_uv:.1f}</div></div>', unsafe_allow_html=True)
     with r3:
-        st.markdown(f'<div class="metric‑card"><div class="metric‑title">🍃 PM2.5</div><div class="metric‑value">{st.session_state.global_pm25:.1f}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-card"><div class="metric-title">🍃 PM2.5</div><div class="metric-value">{st.session_state.global_pm25:.1f}</div></div>', unsafe_allow_html=True)
     with r4:
         rain_text = "是" if st.session_state.global_rain else "否"
-        st.markdown(f'<div class="metric‑card"><div class="metric‑title">🌧️ 是否降雨</div><div class="metric‑value">{rain_text}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-card"><div class="metric-title">🌧️ 是否降雨</div><div class="metric-value">{rain_text}</div></div>', unsafe_allow_html=True)
     st.write("")
     st.markdown(
-        '<div class="card"><h3 style="margin‑top:0px;color:#1E5631;">🎒 當前氣象動態推薦隨行裝備</h3><p style="font‑size:0.9rem;margin‑bottom:0;">系統根據目前的<b>氣溫、紫外線、是否降雨與懸浮微粒</b>數據精算出的推薦清單 (請依需求勾選完成)：</p></div>',
+        '<div class="card"><h3 style="margin-top:0px;color:#1E5631;">🎒 當前氣象動態推薦隨行裝備</h3><p style="font-size:0.9rem;margin-bottom:0;">系統根據目前的<b>氣溫、紫外線、是否降雨與懸浮微粒</b>數據精算出的推薦清單 (請依需求勾選完成)：</p></div>',
         unsafe_allow_html=True
     )
     st.markdown("##### 📌 出行必備基礎裝備")
@@ -393,7 +488,10 @@ elif st.session_state.current_page == "gear":
         st.markdown(f"##### 😷 懸浮微粒：呼吸道護理裝備 (當前 PM2.5 {cur_pm25:.1f})")
         st.checkbox("😷 **兒童高防護透氣口罩**", value=False, key="gear_pm_high")
 
-# ========== 驅蟲頁 ==========
+
+# ============================================================
+# 驅蟲頁
+# ============================================================
 elif st.session_state.current_page == "audio":
     st.markdown('<div class="back-btn">', unsafe_allow_html=True)
     if st.button("← 返回主頁面", key="back_audio"):
@@ -401,7 +499,7 @@ elif st.session_state.current_page == "audio":
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="card"><h3 style="margin‑top:0px;color:#1E5631;">🪰 多頻率驅蚊驅蟲器</h3><p style="font‑size:0.9rem;margin‑bottom:0;">選擇特定昆蟲頻率，啟動後離開此頁面聲波依然保持播放。</p></div>',
+        '<div class="card"><h3 style="margin-top:0px;color:#1E5631;">🪰 多頻率驅蚊驅蟲器</h3><p style="font-size:0.9rem;margin-bottom:0;">選擇特定昆蟲頻率，啟動後離開此頁面聲波依然保持播放。</p></div>',
         unsafe_allow_html=True
     )
     freq_options = [
@@ -421,7 +519,7 @@ elif st.session_state.current_page == "audio":
     }
     current_hz = freq_map[freq_choice]
     st.markdown(
-        f'<div class="card" style="text-align:center;"><h2 style="color:#2E7D32;font‑size:2.1rem;margin:0;">{current_hz/1000:.1f} kHz</h2><p style="font‑size:0.85rem;color:#666;margin‑top:4px;">選擇頻率：<b>{freq_choice.split("-")[1].strip()}</b></p></div>',
+        f'<div class="card" style="text-align:center;"><h2 style="color:#2E7D32;font-size:2.1rem;margin:0;">{current_hz/1000:.1f} kHz</h2><p style="font-size:0.85rem;color:#666;margin-top:4px;">選擇頻率：<b>{freq_choice.split("-")[1].strip()}</b></p></div>',
         unsafe_allow_html=True
     )
     col_a1, col_a2 = st.columns(2)
@@ -462,7 +560,10 @@ osc.start();
     audio_html = audio_html.replace("__HZ__", str(current_hz))
     components.html(audio_html, height=80)
 
-# ========== SOS求救頁 ==========
+
+# ============================================================
+# SOS 求救頁
+# ============================================================
 elif st.session_state.current_page == "sos":
     st.markdown('<div class="back-btn">', unsafe_allow_html=True)
     if st.button("← 返回主頁面", key="back_sos"):
@@ -507,7 +608,7 @@ const acc=pos.coords.accuracy.toFixed(0);
 statusEl.innerText="✅ GPS定位成功";
 noticeEl.innerText=`定位精度約${acc}公尺，緯度${gpsLat}，經度${gpsLon}`;
 const googleMapUrl = `https://www.google.com/maps?q=${gpsLat},${gpsLon}`;
-taEl.value = `緊急求助！本人遇險需要救援。\n緯度：${gpsLat}\n經度：${gpsLon}\nGoogle Maps位置連結：${googleMapUrl}\n請盡快前來救援！`;
+taEl.value = `緊急求助！本人遇險需要救援。\\n緯度：${gpsLat}\\n經度：${gpsLon}\\nGoogle Maps位置連結：${googleMapUrl}\\n請盡快前來救援！`;
 },function(err){
 statusEl.innerText="❌ GPS定位失敗，請開啟定位權限";
 taEl.value="緊急求助！無法獲取GPS，請協助救援！";
@@ -520,3 +621,119 @@ function copySosText(){taEl.select();document.execCommand('copy');alert("✅ 求
 </script>
     """
     components.html(sos_html, height=860)
+
+
+# ============================================================
+# 🔍 Kimi AI 動植物識別（固定 kimi-k2.6）
+# ============================================================
+elif st.session_state.current_page == "eco_identify":
+    st.markdown('<div class="back-btn">', unsafe_allow_html=True)
+    if st.button("← 返回主頁面", key="back_identify"):
+        st.session_state.current_page = "menu"
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown(f"""
+    <div class="card">
+        <h3 style="margin-top:0px; color:#1B5E20;">🔍 Kimi AI 親子生態動植物智慧識別</h3>
+        <p style="margin-bottom:0; color:#2E7D32;">現場拍照或上傳照片，即時辨識戶外常見的動植物與昆蟲！</p>
+        <p style="margin:6px 0 0 0; color:#888; font-size:0.75rem;">模型：{KIMI_MODEL}</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    prompt_style = st.selectbox(
+        "🎨 選擇解說風格：",
+        ["🌱 親子科普故事模式", "🔬 專業生物圖鑑模式", "⚠️ 戶外安全與毒性檢查"],
+        index=0,
+        key="eco_prompt_style"
+    )
+
+    tab_upload, tab_camera = st.tabs(["📁 上傳照片", "📷 現場拍照"])
+    img_file = None
+    image_id = None
+
+    with tab_upload:
+        uploaded = st.file_uploader(
+            "選擇相冊中的動植物照片",
+            type=["jpg", "jpeg", "png", "webp"],
+            key="eco_upload_tab"
+        )
+        if uploaded:
+            img_file = uploaded
+            image_id = f"upload_{uploaded.name}_{uploaded.size}"
+
+    with tab_camera:
+        captured = st.camera_input("直接拍攝動植物", key="eco_camera_tab")
+        if captured:
+            img_file = captured
+            image_id = f"camera_{captured.size}"
+
+    if img_file is not None:
+        st.image(img_file, caption="待識別圖像預覽", use_container_width=True)
+
+        if st.session_state.last_image_id != image_id:
+            st.session_state.last_image_id = image_id
+            st.session_state.identify_result = None
+
+        if st.button("🤖 開始識別", key="btn_do_identify", use_container_width=True):
+            with st.spinner("🌿 Kimi AI 正在分析動植物特徵並生成生態科普說明..."):
+                img_bytes = img_file.getvalue()
+                mime_type = img_file.type if img_file.type else "image/jpeg"
+                system_prompt = build_system_prompt(prompt_style)
+
+                ok, result = call_kimi_vision(
+                    image_bytes=img_bytes,
+                    mime_type=mime_type,
+                    system_prompt=system_prompt
+                )
+
+                if ok:
+                    st.session_state.identify_result = result
+                    st.session_state.identify_history.insert(0, {
+                        "style": prompt_style,
+                        "model": KIMI_MODEL,
+                        "content": result
+                    })
+                    st.session_state.identify_history = st.session_state.identify_history[:10]
+                    st.success("🎉 識別成功！")
+                    st.rerun()
+                else:
+                    st.error(f"❌ 識別失敗：{result}")
+
+    if st.session_state.identify_result:
+        st.markdown("""
+        <div class="card" style="border-left:5px solid #2E7D32; background-color:#F1F8E9;">
+            <h4 style="margin-top:0; color:#1B5E20;">🌿 Kimi AI 生態辨識結果</h4>
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown(st.session_state.identify_result)
+
+        st.download_button(
+            "💾 下載辨識結果 (.txt)",
+            data=st.session_state.identify_result,
+            file_name="動植物辨識結果.txt",
+            mime="text/plain",
+            use_container_width=True,
+            key="download_identify_result"
+        )
+
+    if st.session_state.identify_history:
+        with st.expander(f"📚 辨識歷史紀錄（最近 {len(st.session_state.identify_history)} 筆）", expanded=False):
+            if st.button("🗑️ 清空歷史紀錄", key="clear_identify_history"):
+                st.session_state.identify_history = []
+                st.session_state.identify_result = None
+                st.rerun()
+
+            for i, item in enumerate(st.session_state.identify_history):
+                preview = item["content"][:200] + ("..." if len(item["content"]) > 200 else "")
+                st.markdown(
+                    f"""
+<div class="history-card">
+    <div style="font-size:0.8rem;color:#0277BD;font-weight:bold;margin-bottom:4px;">
+        #{i+1} ｜ {item['style']} ｜ 模型：{item['model']}
+    </div>
+    <div style="font-size:0.88rem;color:#333;white-space:pre-wrap;">{preview}</div>
+</div>
+""",
+                    unsafe_allow_html=True
+                )

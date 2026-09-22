@@ -1,3 +1,4 @@
+      
 # -*- coding: utf-8 -*-
 """
 🍀 絲野仙蹤 (Eco-Family)
@@ -108,37 +109,96 @@ if st.session_state.is_elder_mode:
     text_scale = "1.45"
     big_btn_text = "1.3rem"
     btn_weight = "500"
+    btn_height = "92px"
 else:
     text_scale = "1.0"
     big_btn_text = "1.03rem"
     btn_weight = "400"
+    btn_height = "78px"
 
 css_text = (
+    "@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');"
     ":root {--text-scale:" + text_scale + ";}"
     """
-    .stApp {background-color:#F7FAF8;color:#2C3E50;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;}
-    .stApp p,.stApp div,.stApp span,.stApp label,.stApp h1,.stApp h2,.stApp h3,.stApp h4,.stApp h5 {font-size:calc(1rem*var(--text-scale))!important;}
-    section[data-testid="stSidebar"] {display:none;}
-    div[data-testid="stButton"]{width:100%!important;margin:0 0 16px 0!important;padding:0!important;box-sizing:border-box!important;}
-    div[data-testid="stButton"]>button{width:100%!important;background-color:#FFFFFF!important;color:#1B5E20!important;border-radius:16px!important;height:76px!important;min-height:76px!important;max-height:76px!important;box-shadow:0 4px 15px rgba(0,0,0,0.04)!important;border:2px solid #E8F5E9!important;text-align:center!important;font-size:"""
-    + big_btn_text +
-    """!important;font-weight:""" + btn_weight + """!important;-webkit-font-smoothing:antialiased!important;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif!important;margin:0 0 16px 0!important;padding:0 8px!important;transition:all 0.2s ease-in-out!important;display:flex!important;align-items:center!important;justify-content:center!important;text-decoration:none!important;border-bottom:none!important;box-sizing:border-box!important;line-height:1.2!important;}
-    div[data-testid="stButton"]>button:hover{border-color:#2E7D32!important;box-shadow:0 6px 20px rgba(46,125,50,0.18)!important;background-color:#F1F8E9!important;transform:translateY(-2px)!important;color:#1B5E20!important;}
-    .sos-header-btn button{background-color:#FFEBEE!important;color:#C62828!important;border:1.5px solid #FFCDD2!important;font-weight:700!important;height:38px!important;min-height:38px!important;font-size:0.85rem!important;border-radius:8px!important;padding:4px 8px!important;margin-bottom:0px!important;}
-    .audio-header-btn button{height:38px!important;min-height:38px!important;font-size:0.85rem!important;border-radius:8px!important;padding:4px 8px!important;margin-bottom:0px!important;}
-    .card{background-color:#FFFFFF;border-radius:12px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,0.04);border-left:5px solid #2E7D32;border-top:1px solid #E8F5E9;border-right:1px solid #E8F5E9;border-bottom:1px solid #E8F5E9;margin-bottom:16px;}
-    .metric-card{background-color:#F1F8E9;border-radius:10px;padding:10px;text-align:center;border:1px solid #C5E1A5;margin-bottom:10px;}
-    .metric-title{font-size:calc(0.82rem*var(--text-scale));color:#388E3C;font-weight:bold;}
-    .metric-value{font-size:calc(1.35rem*var(--text-scale));font-weight:bold;color:#1B5E20;}
-    .badge-green{background-color:#2E7D32;color:white;padding:4px 10px;border-radius:10px;font-size:calc(0.8rem*var(--text-scale));font-weight:bold;}
-    .badge-star{background-color:#E65100;color:white;padding:4px 10px;border-radius:10px;font-size:calc(0.8rem*var(--text-scale));font-weight:bold;}
-    .badge-sim{background-color:#F57F17;color:white;padding:3px 8px;border-radius:8px;font-size:calc(0.8rem*var(--text-scale));font-weight:bold;}
-    .badge-feature{background-color:#0277BD;color:white;padding:2px 8px;border-radius:6px;font-size:calc(0.78rem*var(--text-scale));font-weight:bold;margin-left:4px;}
-    .back-btn button{background-color:#E8F5E9!important;color:#1B5E20!important;font-weight:bold!important;padding:8px 16px!important;font-size:calc(0.95rem*var(--text-scale))!important;border-radius:8px!important;border:1px solid #C8E6C9!important;margin-bottom:16px!important;height:auto!important;min-height:auto!important;}
-    .history-card{background-color:#FFFFFF;border-radius:10px;padding:12px;border-left:4px solid #0277BD;box-shadow:0 2px 8px rgba(0,0,0,0.03);margin-bottom:10px;}
-"""
+    :root{--ef-primary:#1B5E20;--ef-green:#2E7D32;--ef-lime:#7CB342;--ef-mint:#E8F5E9;--ef-mint2:#F1F8E9;--ef-ink:#223327;--ef-ink-soft:#5B6B60;--ef-line:#DCEEDF;--ef-radius:18px;--ef-shadow:0 6px 22px rgba(27,94,32,.08);--ef-shadow-hover:0 14px 34px rgba(27,94,32,.16);}
+    .stApp{background:radial-gradient(1100px 420px at 50% -12%,#E3F2E6 0%,rgba(247,250,248,0) 62%),linear-gradient(180deg,#F7FAF8 0%,#F2F8F3 100%);color:var(--ef-ink);font-family:'Noto Sans TC',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;}
+    .stApp p,.stApp div,.stApp span,.stApp label{font-size:calc(1rem*var(--text-scale))!important;}
+    .stApp h1{font-size:calc(1.75rem*var(--text-scale))!important;font-weight:800;color:var(--ef-primary);}
+    .stApp h2{font-size:calc(1.5rem*var(--text-scale))!important;font-weight:800;color:var(--ef-primary);}
+    .stApp h3{font-size:calc(1.28rem*var(--text-scale))!important;font-weight:700;color:#1E5631;}
+    .stApp h4{font-size:calc(1.1rem*var(--text-scale))!important;font-weight:700;color:#1E5631;}
+    .stApp h5{font-size:calc(1rem*var(--text-scale))!important;font-weight:600;color:#1E5631;}
+    section[data-testid="stSidebar"]{display:none;}
+    #MainMenu{visibility:hidden;}
+    [data-testid="stAppDeployButton"]{display:none!important;}
+    footer{visibility:hidden;}
+    ::-webkit-scrollbar{width:10px;}
+    ::-webkit-scrollbar-track{background:transparent;}
+    ::-webkit-scrollbar-thumb{background:#C8E6C9;border-radius:999px;border:2px solid #F7FAF8;}
+    ::-webkit-scrollbar-thumb:hover{background:#A5D6A7;}
+    .brand-wrap{display:flex;align-items:center;gap:10px;}
+    .brand-logo{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#2E7D32,#7CB342);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(46,125,50,.28);flex:none;}
+    .stApp .brand-logo{font-size:calc(1.5rem*var(--text-scale))!important;}
+    .stApp .brand-title{font-size:calc(1.32rem*var(--text-scale))!important;font-weight:900;color:var(--ef-primary);letter-spacing:.02em;}
+    .stApp .brand-sub{font-size:calc(0.78rem*var(--text-scale))!important;color:var(--ef-ink-soft);margin-top:1px;}
+    .ef-divider{height:3px;border-radius:999px;background:linear-gradient(90deg,rgba(46,125,50,0),rgba(46,125,50,.32) 18%,rgba(124,179,66,.6) 50%,rgba(46,125,50,.32) 82%,rgba(46,125,50,0));margin:12px 0 18px;}
+    .hero{position:relative;background:linear-gradient(135deg,#14491B 0%,#1B5E20 42%,#2E7D32 78%,#388E3C 100%);border-radius:22px;padding:32px 22px 24px;text-align:center;color:#FFFFFF;box-shadow:0 14px 36px rgba(27,94,32,.28);overflow:hidden;margin-bottom:20px;}
+    .hero::before{content:"";position:absolute;inset:0;background:radial-gradient(280px 150px at 85% 12%,rgba(255,255,255,.16) 0%,rgba(255,255,255,0) 70%),radial-gradient(240px 140px at 10% 90%,rgba(124,179,66,.35) 0%,rgba(124,179,66,0) 70%);pointer-events:none;}
+    .hero-deco{position:absolute;font-size:1.25rem;opacity:.45;}
+    .hero-deco-1{right:18px;top:14px;}
+    .hero-deco-2{right:44px;bottom:12px;}
+    .hero-emoji{margin-bottom:10px;filter:drop-shadow(0 4px 8px rgba(0,0,0,.18));line-height:1;}
+    .stApp .hero-emoji{font-size:calc(2.6rem*var(--text-scale))!important;}
+    .stApp .hero-title{font-size:calc(1.8rem*var(--text-scale))!important;font-weight:900;letter-spacing:.08em;color:#FFFFFF;text-shadow:0 2px 12px rgba(0,0,0,.22);}
+    .stApp .hero-title-en{font-size:calc(0.78rem*var(--text-scale))!important;letter-spacing:.42em;text-transform:uppercase;color:#DCEDC8;font-weight:500;margin-top:3px;}
+    .stApp .hero-sub{font-size:calc(0.9rem*var(--text-scale))!important;color:#E8F5E9;margin-top:9px;}
+    .hero-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:15px;position:relative;}
+    .stApp .hero-chip{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.28);color:#F1F8E9;border-radius:999px;padding:4px 12px;font-size:calc(0.76rem*var(--text-scale))!important;font-weight:500;}
+    div[data-testid="stButton"]{width:100%!important;margin:0 0 14px 0!important;padding:0!important;box-sizing:border-box!important;}
+    div[data-testid="stButton"]>button{width:100%!important;background:linear-gradient(135deg,#FFFFFF 0%,#F4FAF5 100%)!important;color:#1B5E20!important;border-radius:16px!important;height:""" + btn_height + """!important;min-height:""" + btn_height + """!important;max-height:""" + btn_height + """!important;box-shadow:0 4px 16px rgba(27,94,32,.06)!important;border:1.5px solid var(--ef-line)!important;text-align:center!important;font-size:""" + big_btn_text + """!important;font-weight:""" + btn_weight + """!important;-webkit-font-smoothing:antialiased!important;font-family:'Noto Sans TC',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif!important;margin:0 0 14px 0!important;padding:0 8px!important;transition:all .22s cubic-bezier(.2,.7,.3,1)!important;display:flex!important;align-items:center!important;justify-content:center!important;text-decoration:none!important;border-bottom:none!important;box-sizing:border-box!important;line-height:1.2!important;}
+    div[data-testid="stButton"]>button:hover{border-color:#81C784!important;box-shadow:0 10px 26px rgba(46,125,50,.15)!important;background:linear-gradient(135deg,#F1F8E9 0%,#E8F5E9 100%)!important;transform:translateY(-3px)!important;color:#0F3D14!important;}
+    div[data-testid="stButton"]>button:active{transform:translateY(-1px) scale(.995)!important;}
+    .sos-header-btn button{background:linear-gradient(135deg,#C62828,#E53935)!important;color:#FFFFFF!important;font-weight:700!important;height:40px!important;min-height:40px!important;font-size:calc(0.85rem*var(--text-scale))!important;border-radius:999px!important;padding:4px 14px!important;margin-bottom:0px!important;border:none!important;box-shadow:0 3px 10px rgba(198,40,40,.25)!important;transition:all .2s ease!important;}
+    .sos-header-btn button:hover{transform:translateY(-2px)!important;box-shadow:0 6px 18px rgba(198,40,40,.35)!important;}
+    .audio-header-btn button{background:linear-gradient(135deg,#FFFFFF,#F1F8E9)!important;color:#2E7D32!important;font-weight:600!important;height:40px!important;min-height:40px!important;font-size:calc(0.85rem*var(--text-scale))!important;border-radius:999px!important;padding:4px 14px!important;margin-bottom:0px!important;border:1.5px solid var(--ef-line)!important;box-shadow:0 3px 10px rgba(27,94,32,.08)!important;transition:all .2s ease!important;}
+    .audio-header-btn button:hover{transform:translateY(-2px)!important;border-color:#81C784!important;box-shadow:0 6px 16px rgba(46,125,50,.18)!important;}
+    .back-btn button{background:linear-gradient(135deg,#FFFFFF,#F1F8E9)!important;color:#1B5E20!important;font-weight:700!important;padding:9px 20px 9px 16px!important;font-size:calc(0.95rem*var(--text-scale))!important;border-radius:999px!important;border:1.5px solid #C8E6C9!important;margin-bottom:18px!important;box-shadow:0 3px 10px rgba(27,94,32,.08)!important;transition:all .2s ease!important;height:auto!important;min-height:auto!important;}
+    .back-btn button:hover{transform:translateX(-4px)!important;border-color:#81C784!important;box-shadow:0 6px 16px rgba(46,125,50,.16)!important;background:linear-gradient(135deg,#F1F8E9,#E8F5E9)!important;}
+    .card{position:relative;overflow:hidden;background:#FFFFFF;border-radius:var(--ef-radius);padding:20px 22px;box-shadow:var(--ef-shadow);border:1px solid var(--ef-line);margin-bottom:18px;transition:box-shadow .25s ease,transform .25s ease;}
+    .card:hover{box-shadow:var(--ef-shadow-hover);}
+    .card::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#2E7D32,#7CB342,rgba(124,179,66,0));}
+    .card[style*="E65100"]::before{background:linear-gradient(90deg,#E65100,#FFB300,rgba(255,179,0,0));}
+    .card[style*="C62828"]::before{background:linear-gradient(90deg,#C62828,#EF5350,rgba(239,83,80,0));}
+    .metric-card{background:linear-gradient(180deg,#FFFFFF 0%,#F6FBF6 100%);border-radius:14px;padding:14px 8px;text-align:center;border:1px solid #D9ECD9;margin-bottom:12px;box-shadow:0 3px 10px rgba(27,94,32,.05);transition:all .22s ease;}
+    .metric-card:hover{transform:translateY(-3px);box-shadow:0 10px 22px rgba(46,125,50,.13);border-color:#A5D6A7;}
+    .stApp .metric-title{font-size:calc(0.82rem*var(--text-scale))!important;color:#388E3C;font-weight:700;letter-spacing:.02em;}
+    .stApp .metric-value{font-size:calc(1.3rem*var(--text-scale))!important;font-weight:800;color:var(--ef-primary);margin-top:2px;}
+    .stApp .badge-green{background:linear-gradient(135deg,#2E7D32,#43A047);color:#FFFFFF;padding:5px 12px;border-radius:999px;font-size:calc(0.78rem*var(--text-scale))!important;font-weight:700;box-shadow:0 3px 8px rgba(46,125,50,.25);white-space:nowrap;display:inline-block;}
+    .stApp .badge-star{background:linear-gradient(135deg,#E65100,#FB8C00);color:#FFFFFF;padding:5px 12px;border-radius:999px;font-size:calc(0.78rem*var(--text-scale))!important;font-weight:700;box-shadow:0 3px 10px rgba(230,81,0,.3);white-space:nowrap;display:inline-block;}
+    .stApp .badge-sim{background:linear-gradient(135deg,#F57F17,#FFA000);color:#FFFFFF;padding:4px 10px;border-radius:999px;font-size:calc(0.78rem*var(--text-scale))!important;font-weight:700;box-shadow:0 2px 8px rgba(245,127,23,.25);white-space:nowrap;display:inline-block;}
+    .stApp .badge-feature{background:linear-gradient(135deg,#0277BD,#039BE5);color:#FFFFFF;padding:3px 10px;border-radius:999px;font-size:calc(0.75rem*var(--text-scale))!important;font-weight:600;margin-left:4px;box-shadow:0 2px 8px rgba(2,119,189,.22);white-space:nowrap;display:inline-block;}
+    .history-card{background:#FFFFFF;border-radius:14px;padding:14px 16px;border-left:4px solid #039BE5;box-shadow:0 3px 12px rgba(2,119,189,.07);margin-bottom:10px;transition:all .2s ease;}
+    .history-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(2,119,189,.13);}
+    .stApp .nav-cta{background:linear-gradient(135deg,#1B5E20 0%,#2E7D32 60%,#43A047 100%);color:#FFFFFF;text-align:center;padding:11px;border-radius:12px;font-weight:700;font-size:calc(0.95rem*var(--text-scale))!important;box-shadow:0 4px 14px rgba(27,94,32,.22);transition:all .2s ease;}
+    a:hover .nav-cta{filter:brightness(1.1);transform:translateY(-2px);box-shadow:0 8px 22px rgba(27,94,32,.3);}
+    .freq-display{text-align:center;padding:26px 20px;}
+    .stApp .freq-value{font-size:calc(2.2rem*var(--text-scale))!important;font-weight:900;letter-spacing:.04em;background:linear-gradient(90deg,#1B5E20,#43A047);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+    .stApp .freq-label{font-size:calc(0.85rem*var(--text-scale))!important;color:var(--ef-ink-soft);margin-top:6px;}
+    [data-testid="stExpander"]{background:#FFFFFF;border:1px solid var(--ef-line)!important;border-radius:14px!important;box-shadow:0 3px 12px rgba(27,94,32,.05);overflow:hidden;}
+    [data-testid="stExpander"] summary{font-weight:600;color:#1B5E20;}
+    [data-testid="stExpander"] summary:hover{color:#2E7D32;}
+    [data-testid="stAlert"]{border-radius:12px!important;box-shadow:0 3px 12px rgba(27,94,32,.06)!important;border:1px solid transparent!important;}
+    .stTabs [data-baseweb="tab-list"]{gap:6px;background:#E9F4EB;padding:5px;border-radius:12px;}
+    .stTabs [data-baseweb="tab"]{border-radius:9px;font-weight:600;color:#4E6B54;}
+    .stTabs [aria-selected="true"]{background:#FFFFFF;color:#1B5E20;box-shadow:0 2px 8px rgba(27,94,32,.12);}
+    div[data-testid="stDownloadButton"]>button{background:linear-gradient(135deg,#2E7D32,#43A047)!important;color:#FFFFFF!important;border:none!important;border-radius:12px!important;box-shadow:0 4px 14px rgba(46,125,50,.25)!important;font-weight:700!important;transition:all .2s ease!important;}
+    div[data-testid="stDownloadButton"]>button:hover{transform:translateY(-2px)!important;box-shadow:0 8px 20px rgba(46,125,50,.35)!important;}
+    div[role="radiogroup"] label{padding:8px 12px;border-radius:10px;transition:background .15s ease;border:1px solid transparent;}
+    div[role="radiogroup"] label:hover{background:#F1F8E9;border-color:#DCEEDF;}
+    """
 )
 st.markdown(f"<style>{css_text}</style>", unsafe_allow_html=True)
+
 
 
 # ============================================================
@@ -248,7 +308,7 @@ audio_badge_text = "🟢 驅蟲運作" if st.session_state.audio_active else "�
 col_head1, col_head2, col_head3 = st.columns([1.5, 0.9, 0.9])
 with col_head1:
     st.markdown(
-        '<div><div class="brand-title" style="font-size:calc(1.55rem*var(--text-scale));font-weight:bold;color:#1B5E20;">🍀 絲野仙蹤 Eco-Family</div><div class="brand-sub" style="font-size:calc(0.8rem*var(--text-scale));color:#666;">親子綠色呼吸智慧隨行助手</div></div>',
+        '<div class="brand-wrap"><div class="brand-logo">🍀</div><div><div class="brand-title">絲野仙蹤 Eco-Family</div><div class="brand-sub">親子綠色呼吸智慧隨行助手</div></div></div>',
         unsafe_allow_html=True
     )
 with col_head2:
@@ -259,13 +319,33 @@ with col_head3:
     if st.button("🚨 一鍵求救", key="top_right_sos_btn"):
         st.session_state.current_page = "sos"
         st.rerun()
-st.markdown("<hr style='margin-top:5px;margin-bottom:15px;border-color:#E8F5E9;'>", unsafe_allow_html=True)
+st.markdown('<div class="ef-divider"></div>', unsafe_allow_html=True)
 
 
 # ============================================================
 # 主選單
 # ============================================================
 if st.session_state.current_page == "menu":
+    st.markdown(
+        """
+<div class="hero">
+    <div class="hero-deco hero-deco-1">🦋</div>
+    <div class="hero-deco hero-deco-2">🍄</div>
+    <div class="hero-emoji">🍀</div>
+    <div class="hero-title">絲野仙蹤</div>
+    <div class="hero-title-en">Eco-Family</div>
+    <div class="hero-sub">親子綠色呼吸智慧隨行助手</div>
+    <div class="hero-chips">
+        <span class="hero-chip">🗺️ 智慧路線</span>
+        <span class="hero-chip">🎒 隨行裝備</span>
+        <span class="hero-chip">🔍 動植物識別</span>
+        <span class="hero-chip">🪰 驅蚊驅蟲</span>
+        <span class="hero-chip">🚨 一鍵求救</span>
+    </div>
+</div>
+""",
+        unsafe_allow_html=True
+    )
     elder_toggle = st.toggle("👵 關愛大字體模式 (老年版)", value=st.session_state.is_elder_mode)
     if elder_toggle != st.session_state.is_elder_mode:
         st.session_state.is_elder_mode = elder_toggle
@@ -399,7 +479,7 @@ elif st.session_state.current_page == "routes":
         badge = '<span class="badge-star">🌟 當前最佳推薦</span>' if is_best else f'<span class="badge-green">適應分: {route["dynamic_score"]}</span>'
         nursery_badge = '<span class="badge-feature">🍼 設母嬰室</span>' if route["has_nursery"] else ''
         nav_url = f"https://uri.amap.com/navigation?from={route['origin']},Start&to={route['destination']},{urllib.parse.quote(route['dest_name'])}&mode=walk&policy=1&src=mypage&callnative=1"
-        bg_style = "border-left:6px solid #E65100;background-color:#FFFDE7;" if is_best else ""
+        bg_style = "border-left:6px solid #E65100;background:linear-gradient(135deg,#FFFDF2,#FFF6DC);" if is_best else ""
         st.markdown(
             f'''
 <div class="card" style="{bg_style}">
@@ -413,7 +493,7 @@ elif st.session_state.current_page == "routes":
         <b>🌳 樹蔭：</b>{route['shade']}% | <b>🚶‍♂️ 實時人數：</b><b style="color:#EF6C00;">{route['live_crowd']} 人</b>
     </div>
     <a href="{nav_url}" target="_blank" style="text-decoration:none;">
-        <div style="background-color:#1B5E20;color:white;text-align:center;padding:10px;border-radius:8px;font-weight:bold;font-size:0.95rem;">🧭 開啟路線地圖導航</div>
+        <div class="nav-cta">🧭 開啟路線地圖導航</div>
     </a>
 </div>
 ''',
@@ -519,7 +599,7 @@ elif st.session_state.current_page == "audio":
     }
     current_hz = freq_map[freq_choice]
     st.markdown(
-        f'<div class="card" style="text-align:center;"><h2 style="color:#2E7D32;font-size:2.1rem;margin:0;">{current_hz/1000:.1f} kHz</h2><p style="font-size:0.85rem;color:#666;margin-top:4px;">選擇頻率：<b>{freq_choice.split("-")[1].strip()}</b></p></div>',
+        f'<div class="card freq-display"><div class="freq-value">{current_hz/1000:.1f} kHz</div><p class="freq-label">選擇頻率：<b>{freq_choice.split("-")[1].strip()}</b></p></div>',
         unsafe_allow_html=True
     )
     col_a1, col_a2 = st.columns(2)
@@ -535,8 +615,8 @@ elif st.session_state.current_page == "audio":
             st.rerun()
 
     audio_html = """
-<div style="text-align:center;padding:10px;background:#F1F8E9;border-radius:10px;">
-    <p style="font-size:0.9rem;color:#2E7D32;font-weight:bold;margin:0;">__STATUS__</p>
+<div style="text-align:center;padding:14px;background:linear-gradient(135deg,#F1F8E9,#E8F5E9);border-radius:14px;border:1px solid #DCEEDF;box-shadow:0 3px 10px rgba(27,94,32,.06);">
+    <p style="font-size:0.95rem;color:#2E7D32;font-weight:bold;margin:0;letter-spacing:.02em;">__STATUS__</p>
 </div>
 <script>
 let actx=null;let osc=null;
@@ -575,24 +655,30 @@ elif st.session_state.current_page == "sos":
         unsafe_allow_html=True
     )
     sos_html = """
-<div style="text-align:center;padding:10px;background-color:#FFEBEE;border-radius:10px;border:1px solid #FFCDD2;margin-bottom:12px;">
+<div style="text-align:center;padding:14px;background:linear-gradient(135deg,#FFEBEE,#FFDDE0);border-radius:14px;border:1px solid #FFCDD2;margin-bottom:14px;box-shadow:0 3px 12px rgba(198,40,40,.08);">
     <div id="sosGpsStatus" style="font-size:0.9rem;color:#C62828;font-weight:bold;margin-bottom:6px;">📡 正在感應當前衛星精確一鍵求救 GPS 座標...</div>
     <div id="regionNotice" style="font-size:0.85rem;color:#B71C1C;font-weight:bold;"></div>
 </div>
-<div style="background-color:#FFFFFF;border-radius:12px;padding:16px;border-left:5px solid #C62828;box-shadow:0 2px 10px rgba(0,0,0,0.04);margin-bottom:16px;text-align:center;">
+<div style="background-color:#FFFFFF;border-radius:16px;padding:18px;border-left:5px solid #C62828;box-shadow:0 6px 20px rgba(198,40,40,.10);margin-bottom:16px;text-align:center;">
     <h4 style="color:#C62828;margin-top:0;font-size:1.05rem;">📋 一鍵複製精準 GPS 求救簡訊內容</h4>
     <div style="margin-bottom:12px;">
-        <button id="copyBtn" onclick="copySosText()" style="width:100%;background-color:#C62828;color:white;font-size:1.1rem;font-weight:bold;padding:14px;border:none;border-radius:10px;cursor:pointer;box-shadow:0 4px 10px rgba(198,40,40,0.3);">📋 一鍵複製求救簡訊內容 (含實時經緯度)</button>
+        <button id="copyBtn" onclick="copySosText()" style="width:100%;background:linear-gradient(135deg,#B71C1C,#E53935);color:white;font-size:1.1rem;font-weight:bold;padding:14px;border:none;border-radius:12px;cursor:pointer;box-shadow:0 4px 14px rgba(198,40,40,0.35);transition:all .2s ease;">📋 一鍵複製求救簡訊內容 (含實時經緯度)</button>
     </div>
     <p style="font-size:0.85rem;color:#666;text-align:left;margin-bottom:4px;font-weight:bold;">📱 將複製的內文貼至微信、簡訊發送給救援隊：</p>
-    <textarea id="sosTextarea" readonly style="width:100%;height:140px;background-color:#F9F9F9;border-radius:8px;border:1px solid #FFCDD2;padding:10px;font-family:monospace;font-size:0.85rem;box-sizing:border-box;color:#333;"></textarea>
+    <textarea id="sosTextarea" readonly style="width:100%;height:140px;background-color:#FFFDFD;border-radius:10px;border:1px solid #FFCDD2;padding:10px;font-family:monospace;font-size:0.85rem;box-sizing:border-box;color:#333;"></textarea>
 </div>
+<style>
+#copyBtn:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(198,40,40,0.45);filter:brightness(1.05);}
+#copyBtn:active{transform:translateY(0);}
+.sos-tel{transition:all .2s ease;}
+.sos-tel:hover{transform:translateY(-3px);filter:brightness(1.08);}
+</style>
 <div id="phoneArea" style="margin-bottom:16px;">
     <h5 style="margin-bottom:8px;color:#1B5E20;">📞 求助熱線直撥</h5>
     <div style="display:flex;gap:10px;">
-        <a href="tel:999" style="flex:1;text-decoration:none;"><div style="background-color:#0277BD;color:white;text-align:center;padding:12px;border-radius:10px;font-weight:bold;">📞 999</div></a>
-        <a href="tel:110" style="flex:1;text-decoration:none;"><div style="background-color:#C62828;color:white;text-align:center;padding:12px;border-radius:10px;font-weight:bold;">📞 110</div></a>
-        <a href="tel:120" style="flex:1;text-decoration:none;"><div style="background-color:#EF6C00;color:white;text-align:center;padding:12px;border-radius:10px;font-weight:bold;">📞 120</div></a>
+        <a href="tel:999" class="sos-tel" style="flex:1;text-decoration:none;"><div style="background:linear-gradient(135deg,#01579B,#039BE5);color:white;text-align:center;padding:13px;border-radius:12px;font-weight:bold;box-shadow:0 3px 10px rgba(2,119,189,.28);">📞 999</div></a>
+        <a href="tel:110" class="sos-tel" style="flex:1;text-decoration:none;"><div style="background:linear-gradient(135deg,#B71C1C,#E53935);color:white;text-align:center;padding:13px;border-radius:12px;font-weight:bold;box-shadow:0 3px 10px rgba(198,40,40,.28);">📞 110</div></a>
+        <a href="tel:120" class="sos-tel" style="flex:1;text-decoration:none;"><div style="background:linear-gradient(135deg,#E65100,#FB8C00);color:white;text-align:center;padding:13px;border-radius:12px;font-weight:bold;box-shadow:0 3px 10px rgba(230,81,0,.28);">📞 120</div></a>
     </div>
 </div>
 <script>
@@ -702,7 +788,7 @@ elif st.session_state.current_page == "eco_identify":
 
     if st.session_state.identify_result:
         st.markdown("""
-        <div class="card" style="border-left:5px solid #2E7D32; background-color:#F1F8E9;">
+        <div class="card" style="border-left:5px solid #2E7D32; background:linear-gradient(135deg,#F1F8E9,#E8F5E9);">
             <h4 style="margin-top:0; color:#1B5E20;">🌿 Kimi AI 生態辨識結果</h4>
         </div>
         """, unsafe_allow_html=True)

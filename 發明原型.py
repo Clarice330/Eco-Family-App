@@ -10,6 +10,7 @@
 3. 🪰 多頻率驅蚊驅蟲器
 4. 🚨 一鍵求救與 GPS 定位
 5. 🔍 Kimi AI 動植物識別（固定 kimi-k2.6）
+6. 📍 共享定位房間（建立/加入房間，地圖即時顯示成員名字與位置）
 
 執行：
     streamlit run 發明原型.py
@@ -26,17 +27,52 @@ import time
 import math
 import json
 import base64
+import html
+import secrets
+import uuid
 
 # ============================================================
-# 🔑 Kimi API Key
+# 🔑 Kimi API Key —— 由 st.secrets 讀取（不再寫死在程式碼中）
+# ------------------------------------------------------------
+# 本地執行：在專案資料夾建立 .streamlit/secrets.toml，內容：
+#     KIMI_API_KEY = "你的金鑰"
+# 雲端執行（Streamlit Community Cloud）：在 App 的「Settings → Secrets」加入同名設定。
+# 未設定時，AI 識別功能會顯示引導提示，其他功能不受影響。
 # ============================================================
-KIMI_API_KEY = "sk-NKcBPK2IVcuyy6FPPtxmCKVPsqK2ditGFBhkrfnDF7oYpzCp"
+try:
+    KIMI_API_KEY = st.secrets["KIMI_API_KEY"]
+except Exception:
+    KIMI_API_KEY = ""
 
 # ============================================================
 # 🤖 唯一使用的模型（寫死，無其他選項）
 # ============================================================
 KIMI_MODEL = "kimi-k2.6"
 # ============================================================
+
+# ============================================================
+# 🔥 Firebase Web 配置（共享定位房間功能用）★ 需自行填入 ★
+# ------------------------------------------------------------
+# 共享定位需要一個免費的 Firebase Realtime Database（用 Google 帳號即可建立）：
+#   ① 前往 https://console.firebase.google.com 建立專案（Spark 免費方案）
+#   ② 建立 Realtime Database，並貼上《共享定位房間部署指南.md》中的安全規則
+#   ③ 專案設定 → 一般 →「你的應用程式」新增 Web 應用程式，取得「Web API Key」
+#   ④ 在 Realtime Database 頁面取得資料庫網址（databaseURL）
+# 把下面兩個常數換成你自己的值即可啟用。這組 Web 配置本來就設計為可公開，
+# 安全由資料庫安全規則把關。未設定前，「共享定位房間」頁會顯示引導說明，
+# 其他功能完全不受影響。詳細圖文步驟請見《共享定位房間部署指南.md》。
+# ============================================================
+FIREBASE_API_KEY = "AIzaSyDkCFr-N3syeX5_cOLwVMyxEA_cuEH1ZYc"
+FIREBASE_DATABASE_URL = "https://eco-family-location-default-rtdb.asia-southeast1.firebasedatabase.app"
+
+# 房間碼字元表：4 位英數字，已剔除易混淆的 0、1、I、O
+SL_CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
+
+# Firebase 是否已完成設定（未設定時房間頁僅顯示引導，不渲染地圖）
+FIREBASE_CONFIGURED = (
+    FIREBASE_API_KEY != "PUT_YOUR_FIREBASE_WEB_API_KEY_HERE"
+    and FIREBASE_DATABASE_URL != "https://PUT_YOUR_FIREBASE_RTDB_URL_HERE"
+)
 
 
 # ============================================================
@@ -56,6 +92,14 @@ st.set_page_config(
 query_params = st.query_params
 if "page" in query_params and query_params["page"]:
     st.session_state.current_page = query_params["page"]
+
+# 邀請連結支援：?page=share_location&room=XXXX 點開後自動帶入房間碼
+if "room" in query_params and query_params.get("page") == "share_location":
+    linked_room = str(query_params["room"]).strip().upper()
+    if len(linked_room) == 4 and all(ch in SL_CODE_ALPHABET for ch in linked_room):
+        st.session_state.sl_room_code = linked_room
+        st.session_state.sl_uid = ""  # 進入「待加入」流程：先輸入名字再進房
+    st.query_params.clear()  # 消化完邀請參數即清空，避免離開後被舊連結反覆拉回
 
 if "global_temp" not in st.session_state:
     st.session_state.global_temp = 22.5
@@ -92,6 +136,16 @@ if "selected_insect_freq" not in st.session_state:
     st.session_state.selected_insect_freq = "17.4 kHz - 模擬雄蚊翅聲 (驅避咬人母蚊)"
 if "current_page" not in st.session_state:
     st.session_state.current_page = "menu"
+
+# 共享定位房間狀態
+if "sl_nickname" not in st.session_state:
+    st.session_state.sl_nickname = ""
+if "sl_room_code" not in st.session_state:
+    st.session_state.sl_room_code = ""
+if "sl_uid" not in st.session_state:
+    st.session_state.sl_uid = ""
+if "sl_role" not in st.session_state:
+    st.session_state.sl_role = ""
 
 # AI 識別狀態
 if "identify_result" not in st.session_state:
@@ -231,6 +285,13 @@ def call_kimi_vision(image_bytes, mime_type, system_prompt):
     呼叫 Kimi 視覺模型（固定 kimi-k2.6）進行圖片辨識。
     回傳 (成功?, 內容或錯誤訊息)
     """
+    if not KIMI_API_KEY:
+        return False, (
+            "尚未設定 Kimi API Key：請於 Streamlit Secrets 加入 KIMI_API_KEY"
+            "（本地請在專案資料夾建立 .streamlit/secrets.toml；"
+            "雲端請在 App 的 Settings → Secrets 面板設定）。"
+            "設定完成後即可恢復 AI 識別功能，其他功能不受影響。"
+        )
     try:
         base64_img = base64.b64encode(image_bytes).decode("utf-8")
         headers = {
@@ -298,6 +359,161 @@ def build_system_prompt(style):
     )
 
 
+# ============================================================
+# 📍 共享定位房間：即時地圖 iframe 產生器（Leaflet + Firebase）
+# ============================================================
+def build_share_map_html():
+    """
+    組出「共享定位房間」即時地圖的完整 HTML，交由 components.html 以 iframe 呈現。
+    iframe 內自包含三個模組（位置資料與資料庫直連，不經過 Streamlit 伺服器）：
+      ① 定位上報：watchPosition 節流（間隔 ≥5 秒且位移 ≥10 公尺才寫入資料庫）
+      ② 即時顯示：onValue 監聽房間成員，即時更新 Leaflet marker（自己綠色、他人藍色，
+         Popup 顯示名字與最後更新時間，lastSeen 超過 90 秒不顯示，fitBounds 自動取景，
+         頂部徽章顯示線上人數）
+      ③ 離場清理：onDisconnect().remove()，關閉頁面或斷網即自動從地圖移除
+      ④ 容錯提示：任何環節（CDN、Firebase、瓦片、定位）失敗都會在地圖區顯示
+         可見提示，不會靜默空白；瓦片連不上自動切換備用底圖，定位錯誤按
+         PERMISSION_DENIED／POSITION_UNAVAILABLE／TIMEOUT 分別給出自查指引
+    長輩模式：is_elder_mode 會同步放大 iframe 內字級。
+    """
+    elder = bool(st.session_state.is_elder_mode)
+    top_font = "1.12rem" if elder else "0.95rem"
+    base_font = "17px" if elder else "13px"
+    pop_font = "15px" if elder else "12.5px"
+
+    def _js(v):
+        # 轉成安全的 JS 字串字面值（< > 一併轉義，避免惡意暱稱以 </script> 逃逸）
+        return json.dumps(str(v), ensure_ascii=False).replace("<", "\\u003c").replace(">", "\\u003e")
+
+    sl_map_doc = """
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>共享定位房間</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+html,body{margin:0;padding:0;height:100%;font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',system-ui,sans-serif;background:#F2F8F3;font-size:__BASE_FONT__;}
+#sl-top{display:flex;align-items:center;gap:10px;padding:11px 12px;background:linear-gradient(135deg,#1B5E20,#2E7D32);color:#FFFFFF;font-size:__TOP_FONT__;font-weight:500;box-sizing:border-box;}
+#sl-top .code{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:8px;padding:2px 10px;letter-spacing:4px;font-weight:800;}
+#sl-gps{font-size:.92em;opacity:.95;}
+#sl-badge{margin-left:auto;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:3px 12px;white-space:nowrap;}
+#map{height:calc(100% - 52px);border-radius:0 0 12px 12px;background:#E0E0E0;position:relative;overflow:hidden;}
+.sl-map-note{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:1100;background:rgba(255,255,255,.96);color:#1B5E20;border:1px solid #A5D6A7;border-radius:10px;padding:8px 14px;font-size:.95em;box-shadow:0 2px 8px rgba(0,0,0,.25);max-width:88%;text-align:center;line-height:1.5;}
+.sl-pin{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #FFFFFF;box-shadow:0 2px 8px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;background:#1E88E5;}
+.sl-pin.me{background:#43A047;}
+.sl-pin span{transform:rotate(45deg);font-size:13px;line-height:1;}
+.leaflet-popup-content{font-size:__POP_FONT__;}
+</style>
+</head>
+<body>
+<div id="sl-top">🏠 房間 <span class="code">__ROOM_HTML__</span><span id="sl-gps">📡 定位中…</span><span id="sl-badge">🟢 線上 0 人</span></div>
+<div id="map"></div>
+<script>
+(function(){
+"use strict";
+var ROOM=__ROOM__,NAME=__NAME__,UID=__UID__,ROLE=__ROLE__;
+var gpsEl=document.getElementById('sl-gps'),badgeEl=document.getElementById('sl-badge'),mapEl=document.getElementById('map');
+function note(msg){var d=document.getElementById('sl-map-note');if(!d){d=document.createElement('div');d.id='sl-map-note';mapEl.appendChild(d);}d.textContent=msg;return d;}
+function noteClear(){var d=document.getElementById('sl-map-note');if(d&&d.parentNode){d.parentNode.removeChild(d);}}
+function failAll(msg){gpsEl.textContent='❌ '+msg;badgeEl.textContent='⚠️ 異常';note('❌ '+msg);}
+try{
+if(typeof L==='undefined'){failAll('地圖元件載入失敗：無法連線 unpkg.com 下載 Leaflet');return;}
+if(typeof firebase==='undefined'){failAll('Firebase 元件載入失敗：無法連線 gstatic.com 下載 SDK');return;}
+var db=null;
+try{firebase.initializeApp({apiKey:__APIKEY__,databaseURL:__DBURL__});db=firebase.database();}
+catch(e){failAll('Firebase 初始化失敗（配置可能有誤）：'+((e&&e.message)?String(e.message).slice(0,60):String(e)));return;}
+var map=L.map('map',{zoomControl:true}).setView([22.1568,113.5615],13);
+var tileOk=0,tileErr=0,tileStage=0;
+var tiles=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> 貢獻者'});
+tiles.on('tileload',function(){tileOk++;if(tileOk>=2){noteClear();}});
+tiles.on('tileerror',function(){tileErr++;if(tileOk>0){return;}
+  if(tileStage===0&&tileErr>=4){tileStage=1;tileErr=0;tiles.setUrl('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png');note('⚠️ 主地圖底圖連不上，已自動切換備用底圖…');}
+  else if(tileStage===1&&tileErr>=4){tileStage=2;note('⚠️ 地圖底圖載入失敗（圖源皆無法連線），但定位共享功能仍可運作');}
+});
+tiles.addTo(map);
+note('🗺️ 地圖底圖載入中…');
+var markers={},last={t:0,lat:null,lng:null},memberCount=-1;
+var myRef=db.ref('rooms/'+ROOM+'/members/'+UID);
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fmt(ts){if(!ts){return '—';}var d=new Date(ts);return d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
+function distM(la1,lo1,la2,lo2){var R=6371000,r=Math.PI/180;var dLa=(la2-la1)*r,dLo=(lo2-lo1)*r;var a=Math.sin(dLa/2)*Math.sin(dLa/2)+Math.cos(la1*r)*Math.cos(la2*r)*Math.sin(dLo/2)*Math.sin(dLo/2);return 2*R*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
+function pinIcon(isMe){var cls=isMe?'sl-pin me':'sl-pin';var emo=isMe?'😊':'🧑';return L.divIcon({className:'',iconSize:[26,26],iconAnchor:[13,26],popupAnchor:[0,-24],html:'<div class="'+cls+'"><span>'+emo+'</span></div>'});}
+if(navigator.geolocation){
+  var geoAnswered=false;
+  var geoHint=setTimeout(function(){if(!geoAnswered){gpsEl.textContent='⏳ 尚未取得定位：請確認 Windows「設定 → 隱私權與安全性 → 位置」已開啟定位服務，且 Edge 地址列左側鎖／ⓘ 圖示已允許定位';}},12000);
+  navigator.geolocation.watchPosition(function(pos){
+    geoAnswered=true;clearTimeout(geoHint);
+    var lat=pos.coords.latitude,lng=pos.coords.longitude,acc=pos.coords.accuracy,now=(new Date()).getTime();
+    var moved=(last.lat===null)||distM(last.lat,last.lng,lat,lng)>=10;
+    if((now-last.t)>=5000&&moved){
+      last={t:now,lat:lat,lng:lng};
+      myRef.set({name:NAME,lat:lat,lng:lng,acc:Math.round(acc),lastSeen:firebase.database.ServerValue.TIMESTAMP});
+      gpsEl.textContent='✅ 定位共享中';
+    }else{
+      gpsEl.textContent='📡 定位中…（每 5 秒／10 公尺更新一次）';
+    }
+  },function(err){
+    geoAnswered=true;clearTimeout(geoHint);
+    var code=(err&&err.code)?err.code:0;
+    if(code===1){gpsEl.textContent='❌ 定位被拒：請點 Edge 地址列左側鎖／ⓘ → 網站權限 → 位置 → 允許，再重新整理';}
+    else if(code===2){gpsEl.textContent='❌ 取不到位置：請到 Windows「設定 → 隱私權與安全性 → 位置」開啟定位服務（桌上型電腦靠 Wi-Fi 推算定位）';}
+    else if(code===3){gpsEl.textContent='⏳ 定位逾時，持續重試中…（桌上型電腦首次定位可能較慢）';}
+    else{gpsEl.textContent='❌ 定位失敗，請檢查定位服務與瀏覽器權限';}
+  },{enableHighAccuracy:true,maximumAge:2000,timeout:25000});
+}else{
+  gpsEl.textContent='❌ 此瀏覽器不支援定位';
+}
+myRef.onDisconnect().remove();
+if(ROLE==='host'){db.ref('rooms/'+ROOM+'/meta').set({hostName:NAME,createdAt:firebase.database.ServerValue.TIMESTAMP});}
+db.ref('rooms/'+ROOM+'/members').on('value',function(snap){
+  var data=snap.val()||{};var seen={},pts=[],count=0,now=(new Date()).getTime();
+  for(var uid in data){
+    if(!Object.prototype.hasOwnProperty.call(data,uid)){continue;}
+    var m=data[uid];
+    if(!m||typeof m.lat!=='number'||typeof m.lng!=='number'){continue;}
+    var age=(m.lastSeen)?(now-m.lastSeen):999999999;
+    if(age>90000){continue;}
+    count++;seen[uid]=1;pts.push([m.lat,m.lng]);
+    var mk=markers[uid];
+    if(!mk){mk=L.marker([m.lat,m.lng],{icon:pinIcon(uid===UID)}).addTo(map);mk.bindPopup('');markers[uid]=mk;}
+    else{mk.setLatLng([m.lat,m.lng]);}
+    var label=(uid===UID)?esc(NAME)+'（我）':esc(m.name||'成員');
+    mk.setPopupContent('<b>'+label+'</b><br>🕒 最後更新：'+fmt(m.lastSeen));
+  }
+  for(var uid2 in markers){
+    if(!Object.prototype.hasOwnProperty.call(markers,uid2)){continue;}
+    if(!seen[uid2]){map.removeLayer(markers[uid2]);delete markers[uid2];}
+  }
+  badgeEl.textContent='🟢 線上 '+count+' 人';
+  if(pts.length===1){map.setView(pts[0],16);}
+  else if(pts.length>1&&count!==memberCount){map.fitBounds(L.latLngBounds(pts).pad(0.3));}
+  memberCount=count;
+},function(){
+  badgeEl.textContent='⚠️ 連線失敗';gpsEl.textContent='❌ 無法連線 Firebase，請確認配置（databaseURL 是否完整）';
+});
+}catch(err){failAll('發生未預期錯誤：'+((err&&err.message)?String(err.message).slice(0,80):String(err)));}
+})();
+</script>
+</body>
+</html>
+"""
+    sl_map_doc = sl_map_doc.replace("__BASE_FONT__", base_font)
+    sl_map_doc = sl_map_doc.replace("__TOP_FONT__", top_font)
+    sl_map_doc = sl_map_doc.replace("__POP_FONT__", pop_font)
+    sl_map_doc = sl_map_doc.replace("__ROOM_HTML__", html.escape(st.session_state.sl_room_code))
+    sl_map_doc = sl_map_doc.replace("__ROOM__", _js(st.session_state.sl_room_code))
+    sl_map_doc = sl_map_doc.replace("__NAME__", _js(st.session_state.sl_nickname))
+    sl_map_doc = sl_map_doc.replace("__UID__", _js(st.session_state.sl_uid))
+    sl_map_doc = sl_map_doc.replace("__ROLE__", _js(st.session_state.sl_role))
+    sl_map_doc = sl_map_doc.replace("__APIKEY__", _js(FIREBASE_API_KEY))
+    sl_map_doc = sl_map_doc.replace("__DBURL__", _js(FIREBASE_DATABASE_URL))
+    return sl_map_doc
+
 update_weather_and_aqi()
 
 
@@ -341,6 +557,7 @@ if st.session_state.current_page == "menu":
         <span class="hero-chip">🔍 動植物識別</span>
         <span class="hero-chip">🪰 驅蚊驅蟲</span>
         <span class="hero-chip">🚨 一鍵求救</span>
+        <span class="hero-chip">📍 共享定位</span>
     </div>
 </div>
 """,
@@ -358,6 +575,9 @@ if st.session_state.current_page == "menu":
         st.rerun()
     if st.button("🔍 親子生態動植物識別", key="btn_m3", use_container_width=True):
         st.session_state.current_page = "eco_identify"
+        st.rerun()
+    if st.button("📍 共享定位房間", key="btn_m4", use_container_width=True):
+        st.session_state.current_page = "share_location"
         st.rerun()
 
 
@@ -823,3 +1043,126 @@ elif st.session_state.current_page == "eco_identify":
 """,
                     unsafe_allow_html=True
                 )
+
+# ============================================================
+# 📍 共享定位房間（Leaflet 地圖 + Firebase Realtime Database）
+# ============================================================
+elif st.session_state.current_page == "share_location":
+    st.markdown('<div class="back-btn">', unsafe_allow_html=True)
+    if st.button("← 返回主頁面", key="back_share"):
+        st.session_state.current_page = "menu"
+        st.session_state.sl_room_code = ""
+        st.session_state.sl_uid = ""
+        st.session_state.sl_role = ""
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown(
+        '<div class="card"><h3 style="margin-top:0px;color:#1B5E20;">📍 共享定位房間</h3>'
+        '<p style="font-size:0.9rem;color:#2E7D32;margin-bottom:0;">建立或加入房間後，地圖上可<b>即時看見房間內每位成員的名字與位置</b>，'
+        '適合親子出遊時互相確認彼此位置。</p></div>',
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        '<div class="card" style="border-left:5px solid #00695C;background:linear-gradient(135deg,#E0F2F1,#E8F5E9);">'
+        '<p style="font-size:0.82rem;color:#00695C;margin:0;"><b>🔐 定位授權說明：</b>你的即時位置<b>只會</b>對房間內成員可見；'
+        '離開此頁面或關閉瀏覽器即自動停止共享並移除你的標記（系統不保存任何歷史軌跡）。'
+        '首次使用時瀏覽器會詢問定位授權，請點選「允許」。</p></div>',
+        unsafe_allow_html=True
+    )
+
+    if not FIREBASE_CONFIGURED:
+        st.markdown(
+            '<div class="card" style="border-left:5px solid #E65100;background:linear-gradient(135deg,#FFF3E0,#FFECB3);">'
+            '<h4 style="margin-top:0;color:#BF360C;">🛠️ 尚未設定 Firebase 配置</h4>'
+            '<p style="font-size:0.85rem;color:#BF360C;margin-bottom:6px;">共享定位需要一個免費的 Firebase Realtime Database '
+            '（用 Google 帳號即可建立，約 10 分鐘）。請依照隨本程式交付的<b>《共享定位房間部署指南.md》</b>操作：</p>'
+            '<p style="font-size:0.85rem;color:#BF360C;margin:0;">① 到 <b>console.firebase.google.com</b> 建立專案（Spark 免費方案）→ '
+            '② 建立 Realtime Database 並貼上安全規則 → ③ 把程式碼最上方的 <b>FIREBASE_API_KEY</b> 與 '
+            '<b>FIREBASE_DATABASE_URL</b> 換成你自己的配置。完成後本頁即可正常使用。</p></div>',
+            unsafe_allow_html=True
+        )
+
+    in_room = bool(st.session_state.sl_room_code and st.session_state.sl_uid)
+    pending_join = bool(st.session_state.sl_room_code and not st.session_state.sl_uid)
+
+    if in_room:
+        role_text = "房主" if st.session_state.sl_role == "host" else "成員"
+        try:
+            _host = st.context.headers.get("host", "")
+        except Exception:
+            _host = ""
+        if _host:
+            _proto = "http" if (_host.startswith("localhost") or _host.startswith("127.0.0.1")) else "https"
+            sl_invite_url = f"{_proto}://{_host}/?page=share_location&room={st.session_state.sl_room_code}"
+        else:
+            sl_invite_url = "你的網址/?page=share_location&room=" + st.session_state.sl_room_code
+        st.markdown(f"""
+<div class="card" style="border-left:5px solid #2E7D32;background:linear-gradient(135deg,#F1F8E9,#E8F5E9);">
+    <div style="font-size:0.85rem;color:#1B5E20;font-weight:bold;">🏠 你的房間號（把這 4 碼告訴家人即可加入）</div>
+    <div style="font-size:2.2rem;letter-spacing:10px;font-weight:900;color:#1B5E20;margin:4px 0;">{html.escape(st.session_state.sl_room_code)}</div>
+    <div style="font-size:0.82rem;color:#5B6B60;margin-bottom:8px;">你的身分：{role_text}｜顯示名字：{html.escape(st.session_state.sl_nickname)}</div>
+    <div style="font-size:0.8rem;color:#00695C;background:#FFFFFF;border:1px dashed #A5D6A7;border-radius:8px;padding:8px;word-break:break-all;">🔗 邀請連結（家人點開後自動帶入本房間，免手動輸入房間號）：<br><b>{html.escape(sl_invite_url)}</b></div>
+</div>
+""", unsafe_allow_html=True)
+        if st.button("🚪 離開房間", key="sl_btn_leave", use_container_width=True):
+            st.session_state.sl_room_code = ""
+            st.session_state.sl_uid = ""
+            st.session_state.sl_role = ""
+            st.rerun()
+        if FIREBASE_CONFIGURED:
+            st.markdown(
+                '<div class="card" style="padding:10px 14px;"><p style="font-size:0.82rem;color:#2E7D32;margin:0;">🗺️ 即時地圖：綠色 😊 是你自己，藍色 🧑 是其他成員。點擊人像可看名字與最後更新時間。</p></div>',
+                unsafe_allow_html=True
+            )
+            components.html(build_share_map_html(), height=520)
+        else:
+            st.info("房間已建立 ✅ 完成《共享定位房間部署指南.md》中的 Firebase 設定後，這裡就會顯示即時地圖。")
+    elif pending_join:
+        st.markdown(
+            '<div class="card" style="border-left:5px solid #00695C;background:linear-gradient(135deg,#E0F2F1,#E8F5E9);">'
+            '<h4 style="margin-top:0;color:#00695C;">🎉 你收到房間邀請！</h4>'
+            '<p style="font-size:0.88rem;color:#00695C;margin-bottom:0;">房間號 <b style="font-size:1.4rem;letter-spacing:6px;">'
+            + html.escape(st.session_state.sl_room_code) + '</b>｜輸入你的名字後即可加入，地圖上即時看見房內所有人。</p></div>',
+            unsafe_allow_html=True
+        )
+        nickname = st.text_input("你在房間內顯示的名字", value=st.session_state.sl_nickname, key="sl_nick_input", placeholder="例如：森森媽媽")
+        if st.button("🚪 加入房間", key="sl_btn_join_link", use_container_width=True):
+            if not nickname.strip():
+                st.warning("請先輸入你的名字再加入房間。")
+            else:
+                st.session_state.sl_nickname = nickname.strip()
+                st.session_state.sl_uid = uuid.uuid4().hex[:12]
+                st.session_state.sl_role = "guest"
+                st.rerun()
+    else:
+        st.markdown("##### 👤 第一步：設定你的名字")
+        nickname = st.text_input("你在房間內顯示的名字", value=st.session_state.sl_nickname, key="sl_nick_input", placeholder="例如：森森媽媽")
+        join_code = st.text_input("🔑 想加入的房間號（4 位英數字，沒有可留空）", key="sl_join_input", placeholder="例如：7KQF").strip().upper()
+        c_create, c_join = st.columns(2)
+        with c_create:
+            if st.button("➕ 建立新房間", key="sl_btn_create", use_container_width=True):
+                if not nickname.strip():
+                    st.warning("請先輸入你的名字再建立房間。")
+                else:
+                    st.session_state.sl_nickname = nickname.strip()
+                    st.session_state.sl_room_code = "".join(secrets.choice(SL_CODE_ALPHABET) for _ in range(4))
+                    st.session_state.sl_uid = uuid.uuid4().hex[:12]
+                    st.session_state.sl_role = "host"
+                    st.rerun()
+        with c_join:
+            if st.button("🚪 加入房間", key="sl_btn_join", use_container_width=True):
+                code = join_code.strip().upper()
+                if not nickname.strip():
+                    st.warning("請先輸入你的名字再加入房間。")
+                elif len(code) != 4 or any(ch not in SL_CODE_ALPHABET for ch in code):
+                    st.warning("房間號須為 4 位英數字（不含 0、1、I、O），請向房主確認。")
+                else:
+                    st.session_state.sl_nickname = nickname.strip()
+                    st.session_state.sl_room_code = code
+                    st.session_state.sl_uid = uuid.uuid4().hex[:12]
+                    st.session_state.sl_role = "guest"
+                    st.rerun()
+        st.caption("💡 房間號由系統隨機生成 4 位英數字（已剔除易混淆的 0、1、I、O），方便當面口頭轉述；也可直接把房間內顯示的邀請連結傳給家人。")
+
+    

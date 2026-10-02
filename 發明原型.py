@@ -576,7 +576,7 @@ if st.session_state.current_page == "menu":
     if st.button("🔍 親子生態動植物識別", key="btn_m3", use_container_width=True):
         st.session_state.current_page = "eco_identify"
         st.rerun()
-    if st.button("📍 共享定位房間", key="btn_m4", use_container_width=True):
+    if st.button("📍 共享定位", key="btn_m4", use_container_width=True):
         st.session_state.current_page = "share_location"
         st.rerun()
 
@@ -1058,7 +1058,7 @@ elif st.session_state.current_page == "share_location":
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown(
-        '<div class="card"><h3 style="margin-top:0px;color:#1B5E20;">📍 共享定位房間</h3>'
+        '<div class="card"><h3 style="margin-top:0px;color:#1B5E20;">📍 共享定位</h3>'
         '<p style="font-size:0.9rem;color:#2E7D32;margin-bottom:0;">建立或加入房間後，地圖上可<b>即時看見房間內每位成員的名字與位置</b>，'
         '適合親子出遊時互相確認彼此位置。</p></div>',
         unsafe_allow_html=True

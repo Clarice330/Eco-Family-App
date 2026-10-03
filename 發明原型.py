@@ -40,9 +40,9 @@ import uuid
 # 未設定時，AI 識別功能會顯示引導提示，其他功能不受影響。
 # ============================================================
 try:
-    KIMI_API_KEY = st.secrets["KIMI_API_KEY"]
+    KIMI_API_KEY = st.secrets["sk-NKcBPK2IVcuyy6FPPtxmCKVPsqK2ditGFBhkrfnDF7oYpzCp"]
 except Exception:
-    KIMI_API_KEY = ""
+    KIMI_API_KEY = "sk-NKcBPK2IVcuyy6FPPtxmCKVPsqK2ditGFBhkrfnDF7oYpzCp"
 
 # ============================================================
 # 🤖 唯一使用的模型（寫死，無其他選項）
